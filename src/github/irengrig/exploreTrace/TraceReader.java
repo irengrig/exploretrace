@@ -6,6 +6,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by Irina.Chernushina on 7/8/2014.
@@ -14,27 +15,25 @@ public class TraceReader {
   private final static String HEADER_START = "Full thread dump";
   private final static String JNI_LINE = "JNI global references:";
   private final static String HEAP_START = "Heap";
-
-  private boolean myDateAwaited;
-  private boolean myHeaderAwaited;
-  private boolean myTraceAwaited;
-  private boolean myHeapAwaited;
-  private boolean myInHeap;
-
-  private String myHeader;
-  private String myHeap;
-  private long myJndiNumber;
-  private Date myDate;
-  private final StringBuilder mySb;
-  private final List<String> myTraces;
+  private final List<BaseParser> myParsers;
+  private final MyDateParser dateParser;
+  private final HeaderParser headerParser;
+  private final AtomicBoolean myTracesStarted;
+  private final TraceParser traceParser;
+  private final JndiAndHeapParser jndiAndHeapParser;
 
   public TraceReader() {
-    myTraces = new ArrayList<String>();
-    myDateAwaited = true;
-    myHeaderAwaited = true;
-    myTraceAwaited = true;
-    myJndiNumber = -1;
-    mySb = new StringBuilder();
+    myParsers = new ArrayList<BaseParser>();
+    myTracesStarted = new AtomicBoolean();
+    dateParser = new MyDateParser(myTracesStarted);
+    headerParser = new HeaderParser(myTracesStarted);
+    traceParser = new TraceParser(myTracesStarted);
+    jndiAndHeapParser = new JndiAndHeapParser(myTracesStarted);
+
+    myParsers.add(dateParser);
+    myParsers.add(headerParser);
+    myParsers.add(jndiAndHeapParser);
+    myParsers.add(traceParser);
   }
 
   public void read(@NotNull final InputStream is) throws IOException {
@@ -43,102 +42,208 @@ public class TraceReader {
     for (;;) {
       final String line = reader.readLine();
       if (line == null) break;  // eof possibly
-      if (myDateAwaited) {
-        myDate = DateParser.tryParse(line);
-        if (myDate != null) {
-          myDateAwaited = false;
-          continue;
-        }
-      }
-      if (myHeaderAwaited) {
-        if (line.trim().startsWith(HEADER_START)) {
-          recordHeader(line);
-          continue;
-        }
-      }
-      if (myTraceAwaited) {
-        if (line.trim().isEmpty()) {
-          flushBufferIntoTrace();
-        } else {
-          if (line.trim().startsWith(JNI_LINE)) {
-            myTraceAwaited = false;
-            myDateAwaited = false;
-            myHeaderAwaited = false;
-            myHeapAwaited = true;
-
-            flushBufferIntoTrace();
-            tryParseJni(line);
-          } else {
-            if (mySb.length() > 0) mySb.append('\n');
-            // no trim!
-            mySb.append(line);
-          }
-        }
-      } else if (myHeapAwaited) {
-//        if (line.trim().startsWith(HEAP_START)) {
-          if (mySb.length() > 0) mySb.append('\n');
-          // no trim!
-          mySb.append(line);
-//        }
-        if (line.trim().isEmpty()) break;
+      for (BaseParser parser : myParsers) {
+        if (parser.eatLine(line)) break;
       }
     }
-
-    if (mySb.length() > 0) {
-      if (myTraceAwaited) {
-        flushBufferIntoTrace();
-      } else if (myHeapAwaited) {
-        myHeap = mySb.toString();
-      }
-    }
-  }
-
-  private void tryParseJni(String line) {
-    String trim = line.trim();
-    if (trim.length() <= JNI_LINE.length()) return;
-    trim = trim.substring(JNI_LINE.length()).trim();
-    try {
-      myJndiNumber = Long.parseLong(trim);
-    } catch (NumberFormatException e) {
-      //
-    }
-  }
-
-  private void flushBufferIntoTrace() {
-    if (mySb.length() > 0) {
-      myTraces.add(mySb.toString());
-      mySb.setLength(0);
-      myDateAwaited = false;
-      myHeaderAwaited = false;
-    }
-  }
-
-  private void recordHeader(String line) {
-  /*Full thread dump Java HotSpot(TM) Server VM (24.0-b56 mixed mode):*/
-    myHeader = line.length() > HEADER_START.length() ? (line.substring(HEADER_START.length()).trim()) : null;
-    myHeader = myHeader != null && myHeader.endsWith(":") ? myHeader.substring(0, myHeader.length() - 1) : myHeader;
-
-    myDateAwaited = false;
-    myHeaderAwaited = false;
   }
 
   public String getHeader() {
-    return myHeader;
+    return headerParser.getHeader();
   }
 
   public String getHeap() {
-    return myHeap;
+    return jndiAndHeapParser.getHeap().toString();
   }
 
   public long getJndiNumber() {
-    return myJndiNumber;
+    return jndiAndHeapParser.getJni();
   }
 
   public Date getDate() {
-    return myDate;
+    return dateParser.getDate();
   }
 
   public List<String> getTraces() {
-    return myTraces;
+    return traceParser.getTraces();
+  }
+
+  public static class JndiAndHeapParser extends BaseParser {
+    private final static int ourMaxLines = 20;
+    private long myJni = -1;
+    private final StringBuilder myHeap = new StringBuilder();
+    private boolean myInHeap;
+    private int myHeapCnt = 0;
+
+    protected JndiAndHeapParser(AtomicBoolean tracesStarted) {
+      super(tracesStarted);
+    }
+
+    @Override
+    protected boolean eatLineImpl(String line) {
+      if (myInHeap) {
+        addHeapLine(line);
+        ++ myHeapCnt;
+        if (myHeapCnt > ourMaxLines) {
+          myInHeap = false;
+          return false;
+        }
+        return true;
+      }
+      if (line.trim().startsWith(JNI_LINE)) {
+        tryParseJni(line);
+        return true;
+      }
+      if (line.trim().startsWith(HEAP_START)) {
+        myInHeap  = true;
+        addHeapLine(line);
+        return true;
+      }
+      return false;
+    }
+
+    private void addHeapLine(final String line) {
+      if (myHeap.length() > 0) myHeap.append('\n');
+      myHeap.append(line);
+    }
+
+    public long getJni() {
+      return myJni;
+    }
+
+    public StringBuilder getHeap() {
+      return myHeap;
+    }
+
+    private void tryParseJni(String line) {
+      String trim = line.trim();
+      if (trim.length() <= JNI_LINE.length()) return;
+      trim = trim.substring(JNI_LINE.length()).trim();
+      try {
+        myJni = Long.parseLong(trim);
+      } catch (NumberFormatException e) {
+        //
+      }
+    }
+  }
+
+  public static class TraceParser extends BaseParser {
+    private final StringBuilder mySb = new StringBuilder();
+    private boolean myIsInside = false;
+    private final List<String> myTraces = new ArrayList<String>();
+
+    public TraceParser(final AtomicBoolean tracesStarted) {
+      super(tracesStarted);
+    }
+
+    @Override
+    protected boolean eatLineImpl(String line) {
+      if (myIsInside) {
+        if (line.trim().startsWith("\"")) {
+          myIsInside = false;
+          flushBufferIntoTrace();
+          return false;
+        } else {
+          appendLineToSb(line);
+          return true;
+        }
+      }
+      if (line.trim().startsWith("\"")) {
+        myTracesStarted.set(true);
+        myIsInside = true;
+        appendLineToSb(line);
+        return true;
+      }
+      return false;
+    }
+
+    private void appendLineToSb(String line) {
+      if (mySb.length() > 0) mySb.append('\n');
+      mySb.append(line);
+    }
+
+    private void flushBufferIntoTrace() {
+      if (mySb.length() > 0) {
+        myTraces.add(mySb.toString());
+        mySb.setLength(0);
+      }
+    }
+
+    public List<String> getTraces() {
+      return myTraces;
+    }
+  }
+
+  public static class HeaderParser extends BaseParser {
+    private String myHeader;
+
+    public HeaderParser(AtomicBoolean tracesStarted) {
+      super(tracesStarted);
+    }
+
+    @Override
+    protected boolean eatLineImpl(String line) {
+      if (isTracesStarted()) {
+        myIsInBusiness = false;
+        return false;
+      }
+      if (line.trim().startsWith(HEADER_START)) {
+        myHeader = line.length() > HEADER_START.length() ? (line.substring(HEADER_START.length()).trim()) : null;
+        myHeader = myHeader != null && myHeader.endsWith(":") ? myHeader.substring(0, myHeader.length() - 1) : myHeader;
+        myIsInBusiness = false;
+        return true;
+      }
+      return false;
+    }
+
+    public String getHeader() {
+      return myHeader;
+    }
+  }
+
+  public static class MyDateParser extends BaseParser {
+    private Date myDate;
+
+    public MyDateParser(AtomicBoolean tracesStarted) {
+      super(tracesStarted);
+    }
+
+    @Override
+    protected boolean eatLineImpl(String line) {
+      if (isTracesStarted()) {
+        myIsInBusiness = false;
+        return false;
+      }
+      myDate = DateParser.tryParse(line);
+      if (myDate != null) {
+        myIsInBusiness = false;
+        return true;
+      }
+      return false;
+    }
+
+    public Date getDate() {
+      return myDate;
+    }
+  }
+
+  private static abstract class BaseParser {
+    protected boolean myIsInBusiness = true;
+    protected final AtomicBoolean myTracesStarted;
+
+    protected BaseParser(AtomicBoolean tracesStarted) {
+      this.myTracesStarted = tracesStarted;
+    }
+
+    public boolean eatLine(String line) {
+      if (! myIsInBusiness) return false;
+      return eatLineImpl(line);
+    }
+
+    protected abstract boolean eatLineImpl(String line);
+
+    public boolean isTracesStarted() {
+      return myTracesStarted.get();
+    }
   }
 }
