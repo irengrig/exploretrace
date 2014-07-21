@@ -1,5 +1,6 @@
 package github.irengrig;
 
+import github.irengrig.exploreTrace.TraceCreator;
 import github.irengrig.exploreTrace.TraceReader;
 import org.junit.Test;
 
@@ -18,5 +19,14 @@ public class ReadTraceTest {
     System.out.println("heap: " + traceReader.getHeap());
     System.out.println("jndi: " + traceReader.getJndiNumber());
     System.out.println("Traces: " + traceReader.getTraces());
+  }
+
+  @Test
+  public void testAlsoCorrect() throws Exception {
+    final TraceReader traceReader = new TraceReader();
+    traceReader.read(new FileInputStream("./testResources/sampleTrace1.txt"));
+    final TraceCreator traceCreator = new TraceCreator(traceReader);
+    traceCreator.createTraces();
+    System.out.println("-");
   }
 }

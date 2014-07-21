@@ -2,6 +2,9 @@ package github.irengrig.exploreTrace;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by Irina.Chernushina on 7/7/2014.
  */
@@ -13,11 +16,10 @@ public class Trace {
   private final String myStateWords;
   private final boolean myIsDaemon;
   private final String myIdentifier;
-  private final StackTraceElement[] myTrace;
-  private final String myHeader;
+  private final List<String> myTrace;
 
   private Trace(String myThreadName, String myThreadGroup, int myPriority, Thread.State myState, String myStateWords,
-                boolean myIsDaemon, String myIdentifier, StackTraceElement[] myTrace, String myHeader) {
+                boolean myIsDaemon, String myIdentifier, List<String> myTrace) {
     this.myThreadName = myThreadName;
     this.myThreadGroup = myThreadGroup;
     this.myPriority = myPriority;
@@ -26,7 +28,6 @@ public class Trace {
     this.myIsDaemon = myIsDaemon;
     this.myIdentifier = myIdentifier;
     this.myTrace = myTrace;
-    this.myHeader = myHeader;
   }
   
   public static class Builder {
@@ -41,55 +42,55 @@ public class Trace {
     private boolean myIsDaemon = false;
     @Nullable
     private String myIdentifier;
-    private StackTraceElement[] myTrace = new StackTraceElement[0];
+    private List<String> myTrace = new ArrayList<>();
     @Nullable
     private String myHeader;
 
     public Trace create() {
-      return new Trace(myThreadName, myThreadGroup, myPriority, myState, myStateWords, myIsDaemon, myIdentifier, myTrace, myHeader);
+      return new Trace(myThreadName, myThreadGroup, myPriority, myState, myStateWords, myIsDaemon, myIdentifier, myTrace);
     }
 
-    public Builder setMyThreadName(String threadName) {
+    public Builder setThreadName(String threadName) {
       myThreadName = threadName;
       return this;
     }
 
-    public Builder setMyThreadGroup(@Nullable String threadGroup) {
+    public Builder setThreadGroup(@Nullable String threadGroup) {
       myThreadGroup = threadGroup;
       return this;
     }
 
-    public Builder setMyPriority(int priority) {
+    public Builder setPriority(int priority) {
       myPriority = priority;
       return this;
     }
 
-    public Builder setMyState(@Nullable Thread.State state) {
+    public Builder setState(@Nullable Thread.State state) {
       myState = state;
       return this;
     }
 
-    public Builder setMyStateWords(@Nullable String stateWords) {
+    public Builder setStateWords(@Nullable String stateWords) {
       myStateWords = stateWords;
       return this;
     }
 
-    public Builder setMyIsDaemon(boolean isDaemon) {
+    public Builder setIsDaemon(boolean isDaemon) {
       myIsDaemon = isDaemon;
       return this;
     }
 
-    public Builder setMyIdentifier(@Nullable String identifier) {
+    public Builder setIdentifier(@Nullable String identifier) {
       myIdentifier = identifier;
       return this;
     }
 
-    public Builder setMyTrace(StackTraceElement[] trace) {
-      myTrace = trace;
+    public Builder setTrace(final List<String> list) {
+      myTrace = list;
       return this;
     }
 
-    public Builder setMyHeader(@Nullable String header) {
+    public Builder setHeader(@Nullable String header) {
       myHeader = header;
       return this;
     }
