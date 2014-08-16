@@ -1,6 +1,7 @@
 package github.irengrig.exploreTrace;
 
 import com.google.common.base.Strings;
+import com.intellij.openapi.util.Pair;
 import com.intellij.util.containers.MultiMap;
 
 import java.util.*;
@@ -23,20 +24,20 @@ public class TracesClassifier {
   }
 
   public void execute() {
-    final MultiMap<Integer, Trace> map = new MultiMap<>();
+    final MultiMap<Pair<String, List<String>>, Trace> map = new MultiMap<>();
     for (Trace inTrace : myInTraces) {
-      final int hash = traceHash(inTrace);
-      map.putValue(hash, inTrace);
+      map.putValue(Pair.create(inTrace.getStateWords(), inTrace.getTrace()), inTrace);
     }
 
-    final Set<Map.Entry<Integer, Collection<Trace>>> entries = map.entrySet();
-    final Iterator<Map.Entry<Integer, Collection<Trace>>> iterator = entries.iterator();
+    final Set<Map.Entry<Pair<String, List<String>>, Collection<Trace>>> entries = map.entrySet();
+    final Iterator<Map.Entry<Pair<String, List<String>>, Collection<Trace>>> iterator = entries.iterator();
     while (iterator.hasNext()) {
-      final Map.Entry<Integer, Collection<Trace>> entry = iterator.next();
+      final Map.Entry<Pair<String, List<String>>, Collection<Trace>> entry = iterator.next();
       if (entry.getValue().size() == 1) {
         iterator.remove();
         myNotGrouped.add(entry.getValue().iterator().next());
       } else {
+        // todo with no trace
         final Collection<Trace> traces = entry.getValue();
         final List<String> names = new ArrayList<>();
         for (Trace trace : traces) {
@@ -46,7 +47,7 @@ public class TracesClassifier {
         // todo invent another way
         poolName = poolName == null ? names.get(0) : poolName;
         final Trace first = traces.iterator().next();
-        final PoolDescriptor descriptor = new PoolDescriptor(first, entry.getKey(), names);
+        final PoolDescriptor descriptor = new PoolDescriptor(first, names);
         descriptor.setNumber(traces.size());
         descriptor.setTemplateName(poolName);
         myPools.add(descriptor);
@@ -65,25 +66,14 @@ public class TracesClassifier {
     return candidate;
   }
 
-  // todo rewrite with equals
-  private int traceHash(final Trace trace) {
-    int result = trace.getStateWords() != null ? trace.getStateWords().hashCode() : 0;
-    result = 31 * result + (trace.isDaemon() ? 1 : 0);
-    final List<String> stacks = trace.getTrace();
-    result = 31 * result + (stacks != null ? stacks.hashCode() : 0);
-    return result;
-  }
-
   public static class PoolDescriptor {
-    private final int myHash;
     private String myTemplateName;
     private int myNumber;
     private final Trace myTypicalTrace;
     private final List<String> myNames;
 
-    public PoolDescriptor(final Trace typicalTrace, final int hash, final List<String> names) {
+    public PoolDescriptor(final Trace typicalTrace, final List<String> names) {
       myTypicalTrace = typicalTrace;
-      myHash = hash;
       myNames = names;
     }
 
@@ -105,10 +95,6 @@ public class TracesClassifier {
 
     public void setNumber(final int number) {
       myNumber = number;
-    }
-
-    public int getHash() {
-      return myHash;
     }
 
     public Trace getTypicalTrace() {
