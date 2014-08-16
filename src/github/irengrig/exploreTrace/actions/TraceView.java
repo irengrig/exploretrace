@@ -52,6 +52,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     myDefaultActionGroup = defaultActionGroup;
     myListMapping = new ArrayList<>();
     initUi();
+    updateDetails();
   }
 
   public JBList getNamesList() {
@@ -70,19 +71,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     myNamesList.addListSelectionListener(new ListSelectionListener() {
       @Override
       public void valueChanged(final ListSelectionEvent e) {
-        myConsole.clear();
-        final int idx = myNamesList.getSelectedIndex();
-        if (idx >= 0) {
-          final TypedTrace elementAt = (TypedTrace) ((DefaultListModel) myNamesList.getModel()).getElementAt(idx);
-          final Trace t;
-          if (! TraceType.pool.equals(elementAt.getTraceType())) {
-            t = (Trace) elementAt.getT();
-          } else {
-            t = ((TracesClassifier.PoolDescriptor) elementAt.getT()).getTypicalTrace();
-          }
-          myConsole.print(StringUtil.join(t.getTrace(), "\n"), ConsoleViewContentType.ERROR_OUTPUT);
-        }
-        myConsole.scrollTo(0);
+        updateDetails();
       }
     });
     // todo does not work in the beginning of the list when I'm in the middle
@@ -93,6 +82,22 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     add(ActionManager.getInstance().createActionToolbar(ActionPlaces.MAIN_TOOLBAR, myDefaultActionGroup, false).getComponent(), BorderLayout.WEST);
     add(mySplitter, BorderLayout.CENTER);
+  }
+
+  private void updateDetails() {
+    myConsole.clear();
+    final int idx = myNamesList.getSelectedIndex();
+    if (idx >= 0) {
+      final TypedTrace elementAt = (TypedTrace) ((DefaultListModel) myNamesList.getModel()).getElementAt(idx);
+      final Trace t;
+      if (! TraceType.pool.equals(elementAt.getTraceType())) {
+        t = (Trace) elementAt.getT();
+      } else {
+        t = ((TracesClassifier.PoolDescriptor) elementAt.getT()).getTypicalTrace();
+      }
+      myConsole.print(StringUtil.join(t.getTrace(), "\n"), ConsoleViewContentType.ERROR_OUTPUT);
+    }
+    myConsole.scrollTo(0);
   }
 
   private void fillNamesList() {
