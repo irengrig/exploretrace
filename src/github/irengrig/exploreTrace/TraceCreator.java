@@ -1,8 +1,5 @@
 package github.irengrig.exploreTrace;
 
-import com.intellij.openapi.project.Project;
-import org.jetbrains.annotations.NotNull;
-
 import java.util.*;
 
 /**

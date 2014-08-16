@@ -29,7 +29,39 @@ public class Trace {
     this.myIdentifier = myIdentifier;
     this.myTrace = myTrace;
   }
-  
+
+  public String getThreadName() {
+    return myThreadName;
+  }
+
+  public String getThreadGroup() {
+    return myThreadGroup;
+  }
+
+  public int getPriority() {
+    return myPriority;
+  }
+
+  public Thread.State getState() {
+    return myState;
+  }
+
+  public String getStateWords() {
+    return myStateWords;
+  }
+
+  public boolean isDaemon() {
+    return myIsDaemon;
+  }
+
+  public String getIdentifier() {
+    return myIdentifier;
+  }
+
+  public List<String> getTrace() {
+    return myTrace;
+  }
+
   public static class Builder {
     private String myThreadName;
     @Nullable
