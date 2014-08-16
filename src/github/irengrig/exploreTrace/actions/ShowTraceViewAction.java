@@ -1,7 +1,9 @@
 package github.irengrig.exploreTrace.actions;
 
+import com.intellij.ide.actions.CloseAction;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.project.Project;
@@ -56,14 +58,26 @@ public class ShowTraceViewAction extends AnAction {
     classifier.execute();
 
     final ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
-    final ToolWindow toolWindow = toolWindowManager.registerToolWindow("Explore Stack Trace", true, ToolWindowAnchor.BOTTOM, project);
+    // todo multiple
+    final String name = "Explore Stack Trace";
+    final ToolWindow toolWindow = toolWindowManager.registerToolWindow(name, true, ToolWindowAnchor.BOTTOM, project);
+    toolWindow.setToHideOnEmptyContent(true);
 
     final ContentManager contentManager = toolWindow.getContentManager();
-    final TraceView traceView = new TraceView(project, classifier.getNotGrouped(), classifier.getPools(), classifier.getJdkThreads());
+    final DefaultActionGroup defaultActionGroup = new DefaultActionGroup();
+    defaultActionGroup.add(new CloseAction() {
+      @Override
+      public void actionPerformed(final AnActionEvent e) {
+        super.actionPerformed(e);
+        toolWindowManager.unregisterToolWindow(name);
+      }
+    });
+    final TraceView traceView = new TraceView(project, classifier.getNotGrouped(), classifier.getPools(),
+            classifier.getJdkThreads(), defaultActionGroup);
     // todo creation parameters?
     final Content content = contentManager.getFactory().createContent(traceView, "", false);
     content.setPreferredFocusableComponent(traceView.getNamesList());
-    content.setCloseable(true);
+    //content.setCloseable(true);
     contentManager.addContent(content);
 
     toolWindow.activate(EmptyRunnable.getInstance());

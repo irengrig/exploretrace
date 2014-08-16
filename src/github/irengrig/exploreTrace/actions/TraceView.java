@@ -5,9 +5,8 @@ import com.intellij.execution.filters.TextConsoleBuilderFactory;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.icons.AllIcons;
-import com.intellij.openapi.actionSystem.DataKey;
-import com.intellij.openapi.actionSystem.DataSink;
-import com.intellij.openapi.actionSystem.TypeSafeDataProvider;
+import com.intellij.ide.actions.CloseAction;
+import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.util.Pair;
@@ -36,21 +35,23 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private final List<Trace> myNotGrouped;
   private final List<TracesClassifier.PoolDescriptor> myPools;
   private final List<Trace> myJdkThreads;
+  private final DefaultActionGroup myDefaultActionGroup;
   private JBList myNamesList;
   private Splitter mySplitter;
   private ConsoleView myConsole;
 
   private List<Pair<TraceType, Integer>> myListMapping;
 
-  public TraceView(final Project project, final List<Trace> notGrouped, final List<TracesClassifier.PoolDescriptor> pools, final List<Trace> jdkThreads) {
+  public TraceView(final Project project, final List<Trace> notGrouped, final List<TracesClassifier.PoolDescriptor> pools,
+                   final List<Trace> jdkThreads, DefaultActionGroup defaultActionGroup) {
     super(new BorderLayout());
     myProject = project;
     myNotGrouped = notGrouped;
     myPools = pools;
     myJdkThreads = jdkThreads;
+    myDefaultActionGroup = defaultActionGroup;
     myListMapping = new ArrayList<>();
     initUi();
-    add(mySplitter, BorderLayout.CENTER);
   }
 
   public JBList getNamesList() {
@@ -89,6 +90,9 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     mySplitter.setFirstComponent(ScrollPaneFactory.createScrollPane(myNamesList, SideBorder.LEFT | SideBorder.RIGHT));
     mySplitter.setSecondComponent(myConsole.getComponent());
+
+    add(ActionManager.getInstance().createActionToolbar(ActionPlaces.MAIN_TOOLBAR, myDefaultActionGroup, false).getComponent(), BorderLayout.WEST);
+    add(mySplitter, BorderLayout.CENTER);
   }
 
   private void fillNamesList() {
