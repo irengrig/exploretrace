@@ -67,12 +67,13 @@ public class TraceCreator {
     if (idx == -1) return false;
     String sub = s.substring(idx + StartsFinder.ThreadState.length());
     if (! sub.startsWith(":")) return false;
-    final int idxState = sub.indexOf(' ', 1);
+    sub = sub.substring(1).trim();
+    final int idxState = sub.indexOf(' ');
     if (idxState > 0) {
       try {
-        final Thread.State state = Thread.State.valueOf(sub.substring(1, idxState).trim());
+        final Thread.State state = Thread.State.valueOf(sub.substring(0, idxState).trim());
         builder.setState(state);
-        builder.setStateWords(sub.substring(1).trim());
+        builder.setStateWords(sub);
         return true;
       } catch (IllegalArgumentException e) {
         return false;
