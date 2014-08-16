@@ -2,6 +2,7 @@ package github.irengrig;
 
 import github.irengrig.exploreTrace.TraceCreator;
 import github.irengrig.exploreTrace.TraceReader;
+import github.irengrig.exploreTrace.TracesClassifier;
 import org.junit.Test;
 
 import java.io.FileInputStream;
@@ -27,6 +28,17 @@ public class ReadTraceTest {
     traceReader.read(new FileInputStream("./testResources/sampleTrace1.txt"));
     final TraceCreator traceCreator = new TraceCreator(traceReader);
     traceCreator.createTraces();
+    System.out.println("-");
+  }
+
+  @Test
+  public void testClassify() throws Exception {
+    final TraceReader traceReader = new TraceReader();
+    traceReader.read(new FileInputStream("./testResources/shortSampleTrace.txt"));
+    final TraceCreator traceCreator = new TraceCreator(traceReader);
+    traceCreator.createTraces();
+    final TracesClassifier tracesClassifier = new TracesClassifier(traceCreator.getCreatedTraces());
+    tracesClassifier.execute();
     System.out.println("-");
   }
 }

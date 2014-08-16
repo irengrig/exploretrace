@@ -42,9 +42,21 @@ public class TraceReader {
     for (;;) {
       final String line = reader.readLine();
       if (line == null) break;  // eof possibly
+      // todo debug ?
+      boolean eaten = false;
       for (BaseParser parser : myParsers) {
-        if (parser.eatLine(line)) break;
+        if (parser.eatLine(line)) {
+          eaten = true;
+          break;
+        }
       }
+      if (! eaten) {
+        // todo debug
+        System.out.println("Problem!");
+      }
+    }
+    for (BaseParser parser : myParsers) {
+      parser.finish();
     }
   }
 
@@ -142,7 +154,7 @@ public class TraceReader {
         if (line.trim().startsWith("\"")) {
           myIsInside = false;
           flushBufferIntoTrace();
-          return false;
+//          return false;
         } else {
           appendLineToSb(line);
           return true;
@@ -166,6 +178,14 @@ public class TraceReader {
       if (mySb.length() > 0) {
         myTraces.add(mySb.toString());
         mySb.setLength(0);
+      }
+    }
+
+    @Override
+    protected void finish() {
+      if (myIsInside) {
+        myIsInside = false;
+        flushBufferIntoTrace();
       }
     }
 
@@ -245,5 +265,7 @@ public class TraceReader {
     public boolean isTracesStarted() {
       return myTracesStarted.get();
     }
+
+    protected void finish() {}
   }
 }

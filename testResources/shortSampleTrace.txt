@@ -1,0 +1,47 @@
+"ApplicationImpl pooled thread 8" prio=4 tid=0x3d07c800 nid=0x1430 waiting on co
+ndition [0x4533f000]
+   java.lang.Thread.State: TIMED_WAITING (parking)
+        at sun.misc.Unsafe.park(Native Method)
+        - parking to wait for  <0x12af84c0> (a java.util.concurrent.SynchronousQ
+ueue$TransferStack)
+        at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:226
+)
+        at java.util.concurrent.SynchronousQueue$TransferStack.awaitFulfill(Sync
+hronousQueue.java:460)
+        at java.util.concurrent.SynchronousQueue$TransferStack.transfer(Synchron
+ousQueue.java:359)
+        at java.util.concurrent.SynchronousQueue.poll(SynchronousQueue.java:942)
+
+        at java.util.concurrent.ThreadPoolExecutor.getTask(ThreadPoolExecutor.ja
+va:1068)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.
+java:1130)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor
+.java:615)
+        at java.lang.Thread.run(Thread.java:724)
+        at com.intellij.openapi.application.impl.ApplicationImpl$1$1.run(Applica
+tionImpl.java:149)
+
+"ApplicationImpl pooled thread 7" prio=4 tid=0x3d07bc00 nid=0x366c waiting on co
+ndition [0x452af000]
+   java.lang.Thread.State: TIMED_WAITING (parking)
+        at sun.misc.Unsafe.park(Native Method)
+        - parking to wait for  <0x12af84c0> (a java.util.concurrent.SynchronousQ
+ueue$TransferStack)
+        at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:226
+)
+        at java.util.concurrent.SynchronousQueue$TransferStack.awaitFulfill(Sync
+hronousQueue.java:460)
+        at java.util.concurrent.SynchronousQueue$TransferStack.transfer(Synchron
+ousQueue.java:359)
+        at java.util.concurrent.SynchronousQueue.poll(SynchronousQueue.java:942)
+
+        at java.util.concurrent.ThreadPoolExecutor.getTask(ThreadPoolExecutor.ja
+va:1068)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.
+java:1130)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor
+.java:615)
+        at java.lang.Thread.run(Thread.java:724)
+        at com.intellij.openapi.application.impl.ApplicationImpl$1$1.run(Applica
+tionImpl.java:149)
