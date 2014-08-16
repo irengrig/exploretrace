@@ -62,6 +62,13 @@ public class Trace {
     return myTrace;
   }
 
+  @Override
+  public String toString() {
+    return "Trace{" +
+            "myThreadName='" + myThreadName + '\'' +
+            '}';
+  }
+
   public static class Builder {
     private String myThreadName;
     @Nullable
