@@ -49,6 +49,7 @@ public class ShowTraceViewAction extends AnAction {
     } catch (IOException e) {
       // ignore
     }
+    if(traceReader.getTraces().isEmpty()) return;
     final TraceCreator traceCreator = new TraceCreator(traceReader);
     traceCreator.createTraces();
     final TracesClassifier classifier = new TracesClassifier(traceCreator.getCreatedTraces());
@@ -62,6 +63,7 @@ public class ShowTraceViewAction extends AnAction {
     // todo creation parameters?
     final Content content = contentManager.getFactory().createContent(traceView, "", false);
     content.setPreferredFocusableComponent(traceView.getNamesList());
+    content.setCloseable(true);
     contentManager.addContent(content);
 
     toolWindow.activate(EmptyRunnable.getInstance());
