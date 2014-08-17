@@ -34,6 +34,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private final Project myProject;
   private final List<Trace> myNotGrouped;
   private final List<TracesClassifier.PoolDescriptor> myPools;
+  private final List<TracesClassifier.PoolDescriptor> mySimilar;
   private final List<Trace> myJdkThreads;
   private final Trace myEdtTrace;
   private final DefaultActionGroup myDefaultActionGroup;
@@ -43,12 +44,14 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
   private List<Pair<TraceType, Integer>> myListMapping;
 
-  public TraceView(final Project project, final List<Trace> notGrouped, final List<TracesClassifier.PoolDescriptor> pools,
+  public TraceView(final Project project, final List<Trace> notGrouped,
+                   final List<TracesClassifier.PoolDescriptor> pools, final List<TracesClassifier.PoolDescriptor> similar,
                    final List<Trace> jdkThreads, final Trace edtTrace, DefaultActionGroup defaultActionGroup) {
     super(new BorderLayout());
     myProject = project;
     myNotGrouped = notGrouped;
     myPools = pools;
+    mySimilar = similar;
     myJdkThreads = jdkThreads;
     myEdtTrace = edtTrace;
     myDefaultActionGroup = defaultActionGroup;
@@ -92,7 +95,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     if (idx >= 0) {
       final TypedTrace elementAt = (TypedTrace) ((DefaultListModel) myNamesList.getModel()).getElementAt(idx);
       final Trace t;
-      if (! TraceType.pool.equals(elementAt.getTraceType())) {
+      if (! TraceType.pool.equals(elementAt.getTraceType()) && ! TraceType.similar.equals(elementAt.getTraceType())) {
         t = (Trace) elementAt.getT();
       } else {
         t = ((TracesClassifier.PoolDescriptor) elementAt.getT()).getTypicalTrace();
@@ -113,6 +116,9 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     }
     if (myEdtTrace != null) {
       model.addElement(new TypedTrace<>(TraceType.jdk, myEdtTrace));
+    }
+    for (TracesClassifier.PoolDescriptor pool : mySimilar) {
+      model.addElement(new TypedTrace<>(TraceType.similar, pool));
     }
     for (TracesClassifier.PoolDescriptor pool : myPools) {
       model.addElement(new TypedTrace<>(TraceType.pool, pool));
@@ -139,7 +145,10 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
           printTrace(t);
         }
         if (TraceType.pool.equals(((TypedTrace) value).getTraceType())) {
-          printPool((TracesClassifier.PoolDescriptor) ((TypedTrace) value).getT());
+          printPool("POOL", (TracesClassifier.PoolDescriptor) ((TypedTrace) value).getT());
+        }
+        if (TraceType.similar.equals(((TypedTrace) value).getTraceType())) {
+          printPool("SIMILAR", (TracesClassifier.PoolDescriptor) ((TypedTrace) value).getT());
         }
         if (TraceType.single.equals(((TypedTrace) value).getTraceType())) {
           final Trace t = (Trace) ((TypedTrace) value).getT();
@@ -150,10 +159,10 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       }
     }
 
-    private void printPool(final TracesClassifier.PoolDescriptor d) {
+    private void printPool(final String name, final TracesClassifier.PoolDescriptor d) {
       final Trace trace = d.getTypicalTrace();
       setIconByState(trace.getState());
-      append("[POOL: " + d.getNumber() + "] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
+      append("[" + name + ": " + d.getNumber() + "] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
       append(d.getTemplateName());
       printState(trace);
     }
@@ -256,6 +265,6 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   }
 
   private static enum TraceType {
-    single, pool, jdk
+    single, pool, jdk, similar
   }
 }

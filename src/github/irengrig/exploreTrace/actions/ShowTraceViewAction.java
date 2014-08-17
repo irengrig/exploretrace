@@ -72,7 +72,7 @@ public class ShowTraceViewAction extends AnAction {
         toolWindowManager.unregisterToolWindow(name);
       }
     });
-    final TraceView traceView = new TraceView(project, classifier.getNotGrouped(), classifier.getPools(),
+    final TraceView traceView = new TraceView(project, classifier.getNotGrouped(), classifier.getPools(), classifier.getSimilar(),
             classifier.getJdkThreads(), classifier.getEdtTrace(), defaultActionGroup);
     // todo creation parameters?
     final Content content = contentManager.getFactory().createContent(traceView, "", false);
