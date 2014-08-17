@@ -9,6 +9,7 @@ import java.util.List;
  * Created by Irina.Chernushina on 7/7/2014.
  */
 public class Trace {
+  private final String myFirstLine;
   private final String myThreadName;
   private final String myThreadGroup;
   private final int myPriority;
@@ -18,8 +19,9 @@ public class Trace {
   private final String myIdentifier;
   private final List<String> myTrace;
 
-  private Trace(String myThreadName, String myThreadGroup, int myPriority, Thread.State myState, String myStateWords,
+  private Trace(final String firstLine, String myThreadName, String myThreadGroup, int myPriority, Thread.State myState, String myStateWords,
                 boolean myIsDaemon, String myIdentifier, List<String> myTrace) {
+    myFirstLine = firstLine;
     this.myThreadName = myThreadName;
     this.myThreadGroup = myThreadGroup;
     this.myPriority = myPriority;
@@ -62,6 +64,10 @@ public class Trace {
     return myTrace;
   }
 
+  public String getFirstLine() {
+    return myFirstLine;
+  }
+
   @Override
   public String toString() {
     return "Trace{" +
@@ -70,6 +76,7 @@ public class Trace {
   }
 
   public static class Builder {
+    private String myFirstLine;
     private String myThreadName;
     @Nullable
     private String myThreadGroup;
@@ -86,7 +93,7 @@ public class Trace {
     private String myHeader;
 
     public Trace create() {
-      return new Trace(myThreadName, myThreadGroup, myPriority, myState, myStateWords, myIsDaemon, myIdentifier, myTrace);
+      return new Trace(myFirstLine, myThreadName, myThreadGroup, myPriority, myState, myStateWords, myIsDaemon, myIdentifier, myTrace);
     }
 
     public Builder setThreadName(String threadName) {
@@ -131,6 +138,11 @@ public class Trace {
 
     public Builder setHeader(@Nullable String header) {
       myHeader = header;
+      return this;
+    }
+
+    public Builder setFirstLine(final String firstLine) {
+      myFirstLine = firstLine;
       return this;
     }
   }

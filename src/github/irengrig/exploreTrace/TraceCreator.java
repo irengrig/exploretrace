@@ -83,6 +83,7 @@ public class TraceCreator {
   }
 
   private void parseFirstLine(String s, final Trace.Builder builder) {
+    builder.setFirstLine(s);
     s = s.trim();
     if (! s.startsWith("\"")) return;
     final int idx = s.indexOf('"', 1);

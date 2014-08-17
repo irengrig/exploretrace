@@ -95,7 +95,8 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       } else {
         t = ((TracesClassifier.PoolDescriptor) elementAt.getT()).getTypicalTrace();
       }
-      myConsole.print(StringUtil.join(t.getTrace(), "\n"), ConsoleViewContentType.ERROR_OUTPUT);
+      final String join = StringUtil.join(t.getTrace(), "\n");
+      myConsole.print(StringUtil.join(new String[]{t.getFirstLine(), join}, "\n"), ConsoleViewContentType.ERROR_OUTPUT);
     }
     myConsole.scrollTo(0);
   }
