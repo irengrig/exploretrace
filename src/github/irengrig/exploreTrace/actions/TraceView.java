@@ -35,6 +35,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private final List<Trace> myNotGrouped;
   private final List<TracesClassifier.PoolDescriptor> myPools;
   private final List<Trace> myJdkThreads;
+  private final Trace myEdtTrace;
   private final DefaultActionGroup myDefaultActionGroup;
   private JBList myNamesList;
   private Splitter mySplitter;
@@ -43,12 +44,13 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private List<Pair<TraceType, Integer>> myListMapping;
 
   public TraceView(final Project project, final List<Trace> notGrouped, final List<TracesClassifier.PoolDescriptor> pools,
-                   final List<Trace> jdkThreads, DefaultActionGroup defaultActionGroup) {
+                   final List<Trace> jdkThreads, final Trace edtTrace, DefaultActionGroup defaultActionGroup) {
     super(new BorderLayout());
     myProject = project;
     myNotGrouped = notGrouped;
     myPools = pools;
     myJdkThreads = jdkThreads;
+    myEdtTrace = edtTrace;
     myDefaultActionGroup = defaultActionGroup;
     myListMapping = new ArrayList<>();
     initUi();
@@ -108,6 +110,9 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     for (Trace trace : myNotGrouped) {
       model.addElement(new TypedTrace<>(TraceType.single, trace));
+    }
+    if (myEdtTrace != null) {
+      model.addElement(new TypedTrace<>(TraceType.jdk, myEdtTrace));
     }
     for (TracesClassifier.PoolDescriptor pool : myPools) {
       model.addElement(new TypedTrace<>(TraceType.pool, pool));

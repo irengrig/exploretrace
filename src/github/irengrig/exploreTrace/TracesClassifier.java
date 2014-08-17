@@ -13,6 +13,7 @@ public class TracesClassifier {
   private final List<Trace> myInTraces;
 
   private final List<Trace> myJdkThreads;
+  private Trace myEdtTrace;
   private final List<PoolDescriptor> myPools;
   private final List<Trace> myNotGrouped;
 
@@ -26,6 +27,14 @@ public class TracesClassifier {
   public void execute() {
     final MultiMap<Pair<String, List<String>>, Trace> map = new MultiMap<>();
     for (Trace inTrace : myInTraces) {
+      if (JvmSystemThreadChecker.isEdt(inTrace)) {
+        myEdtTrace = inTrace;
+        continue;
+      }
+      if (JvmSystemThreadChecker.isJvmThread(inTrace)) {
+        myJdkThreads.add(inTrace);
+        continue;
+      }
       map.putValue(Pair.create(inTrace.getStateWords(), inTrace.getTrace()), inTrace);
     }
 
@@ -112,5 +121,9 @@ public class TracesClassifier {
 
   public List<Trace> getNotGrouped() {
     return myNotGrouped;
+  }
+
+  public Trace getEdtTrace() {
+    return myEdtTrace;
   }
 }

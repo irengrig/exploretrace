@@ -73,7 +73,7 @@ public class ShowTraceViewAction extends AnAction {
       }
     });
     final TraceView traceView = new TraceView(project, classifier.getNotGrouped(), classifier.getPools(),
-            classifier.getJdkThreads(), defaultActionGroup);
+            classifier.getJdkThreads(), classifier.getEdtTrace(), defaultActionGroup);
     // todo creation parameters?
     final Content content = contentManager.getFactory().createContent(traceView, "", false);
     content.setPreferredFocusableComponent(traceView.getNamesList());
