@@ -41,4 +41,15 @@ public class ReadTraceTest {
     tracesClassifier.execute();
     System.out.println("-");
   }
+
+  @Test
+  public void testAlarmPool() throws Exception {
+    final TraceReader traceReader = new TraceReader();
+    traceReader.read(new FileInputStream("./testResources/sampleAlarmPool.txt"));
+    final TraceCreator traceCreator = new TraceCreator(traceReader);
+    traceCreator.createTraces();
+    final TracesClassifier tracesClassifier = new TracesClassifier(traceCreator.getCreatedTraces());
+    tracesClassifier.execute();
+    System.out.println("-");
+  }
 }

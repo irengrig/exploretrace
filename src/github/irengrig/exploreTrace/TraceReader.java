@@ -1,5 +1,6 @@
 package github.irengrig.exploreTrace;
 
+import com.intellij.openapi.util.text.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -50,9 +51,9 @@ public class TraceReader {
           break;
         }
       }
-      if (! eaten) {
+      if (! eaten && ! StringUtil.isEmptyOrSpaces(line)) {
         // todo debug
-        System.out.println("Problem!");
+        System.out.println("Problem! " + line);
       }
     }
     for (BaseParser parser : myParsers) {

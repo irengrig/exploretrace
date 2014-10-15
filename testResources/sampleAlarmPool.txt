@@ -1,0 +1,56 @@
+"Alarm pool(own)" daemon prio=4 tid=0x4421b400 nid=0x1454 waiting on condition [
+0x44edf000]
+   java.lang.Thread.State: WAITING (parking)
+        at sun.misc.Unsafe.park(Native Method)
+        - parking to wait for  <0x1501ae08> (a java.util.concurrent.locks.Abstra
+ctQueuedSynchronizer$ConditionObject)
+        at java.util.concurrent.locks.LockSupport.park(LockSupport.java:186)
+        at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject
+.await(AbstractQueuedSynchronizer.java:2043)
+        at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.jav
+a:442)
+        at java.util.concurrent.ThreadPoolExecutor.getTask(ThreadPoolExecutor.ja
+va:1068)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.
+java:1130)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor
+.java:615)
+        at java.lang.Thread.run(Thread.java:724)
+
+"Alarm pool(own)" daemon prio=4 tid=0x4421d000 nid=0x21a4 waiting on condition [
+0x3be2f000]
+   java.lang.Thread.State: WAITING (parking)
+        at sun.misc.Unsafe.park(Native Method)
+        - parking to wait for  <0x13333f48> (a java.util.concurrent.locks.Abstra
+ctQueuedSynchronizer$ConditionObject)
+        at java.util.concurrent.locks.LockSupport.park(LockSupport.java:186)
+        at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject
+.await(AbstractQueuedSynchronizer.java:2043)
+        at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.jav
+a:442)
+        at java.util.concurrent.ThreadPoolExecutor.getTask(ThreadPoolExecutor.ja
+va:1068)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.
+java:1130)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor
+.java:615)
+        at java.lang.Thread.run(Thread.java:724)
+
+"Alarm pool(shared)" daemon prio=4 tid=0x3d081800 nid=0x1f50 waiting on conditio
+n [0x4395f000]
+   java.lang.Thread.State: WAITING (parking)
+        at sun.misc.Unsafe.park(Native Method)
+        - parking to wait for  <0x12827368> (a java.util.concurrent.locks.Abstra
+ctQueuedSynchronizer$ConditionObject)
+        at java.util.concurrent.locks.LockSupport.park(LockSupport.java:186)
+        at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject
+.await(AbstractQueuedSynchronizer.java:2043)
+        at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.jav
+a:442)
+        at java.util.concurrent.ThreadPoolExecutor.getTask(ThreadPoolExecutor.ja
+va:1068)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.
+java:1130)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor
+.java:615)
+        at java.lang.Thread.run(Thread.java:724)
