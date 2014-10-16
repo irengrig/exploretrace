@@ -69,17 +69,15 @@ public class TraceCreator {
     if (! sub.startsWith(":")) return false;
     sub = sub.substring(1).trim();
     final int idxState = sub.indexOf(' ');
-    if (idxState > 0) {
-      try {
-        final Thread.State state = Thread.State.valueOf(sub.substring(0, idxState).trim());
-        builder.setState(state);
-        builder.setStateWords(sub);
-        return true;
-      } catch (IllegalArgumentException e) {
-        return false;
-      }
+    try {
+      final String stateName = idxState > 0 ? sub.substring(0, idxState) : sub;
+      final Thread.State state = Thread.State.valueOf(stateName.trim());
+      builder.setState(state);
+      builder.setStateWords(sub);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
     }
-    return false;
   }
 
   private void parseFirstLine(String s, final Trace.Builder builder) {

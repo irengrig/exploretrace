@@ -5,7 +5,6 @@ import com.intellij.execution.filters.TextConsoleBuilderFactory;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.icons.AllIcons;
-import com.intellij.ide.actions.CloseAction;
 import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Splitter;
@@ -17,6 +16,7 @@ import com.intellij.unscramble.ThreadOperation;
 import com.intellij.unscramble.ThreadState;
 import github.irengrig.exploreTrace.Trace;
 import github.irengrig.exploreTrace.TracesClassifier;
+import org.jetbrains.annotations.NonNls;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -43,6 +43,8 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private ConsoleView myConsole;
 
   private List<Pair<TraceType, Integer>> myListMapping;
+  @NonNls
+  private static final String SOCKET_GENERIC_PATTERN = "at java.net.";
 
   public TraceView(final Project project, final List<Trace> notGrouped,
                    final List<TracesClassifier.PoolDescriptor> pools, final List<TracesClassifier.PoolDescriptor> similar,
@@ -141,7 +143,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
           append("[JDK] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
           final Trace t = (Trace) ((TypedTrace) value).getT();
           final Thread.State state = t.getState();
-          setIconByState(state);
+          setIconByState(state, t);
           printTrace(t);
         }
         if (TraceType.pool.equals(((TypedTrace) value).getTraceType())) {
@@ -153,7 +155,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
         if (TraceType.single.equals(((TypedTrace) value).getTraceType())) {
           final Trace t = (Trace) ((TypedTrace) value).getT();
           final Thread.State state = t.getState();
-          setIconByState(state);
+          setIconByState(state, t);
           printTrace(t);
         }
       }
@@ -161,7 +163,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     private void printPool(final String name, final TracesClassifier.PoolDescriptor d) {
       final Trace trace = d.getTypicalTrace();
-      setIconByState(trace.getState());
+      setIconByState(trace.getState(), trace);
       append("[" + name + ": " + d.getNumber() + "] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
       append(d.getTemplateName());
       printState(trace);
@@ -179,18 +181,51 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       }
     }
 
-    private void setIconByState(final Thread.State state) {
-      // todo correct states
+    // todo cache!!
+    private void setIconByState(final Thread.State state, final Trace trace) {
       if (Thread.State.BLOCKED.equals(state)) {
         setIcon(Locked);
       } else if (Thread.State.RUNNABLE.equals(state)) {
-        setIcon(Running);
-      } else if (Thread.State.WAITING.equals(state)) {
+        if (isSocket(state, trace)) {
+          setIcon(Socket);
+        } else {
+          setIcon(Running);
+        }
+      } else if (Thread.State.WAITING.equals(state) || Thread.State.TIMED_WAITING.equals(state)) {
         setIcon(Paused);
       } else {
         setIcon(AllIcons.Debugger.KillProcess);
       }
     }
+  }
+
+  private final static Set<String> SOCKET_PATTERNS;
+  static {
+    final Set<String> set = new HashSet<>();
+    addToSocketPattern(set, "PlainSocketImpl.socketAccept(PlainSocketImpl.java:");
+    addToSocketPattern(set, "PlainDatagramSocketImpl.receive(PlainDatagramSocketImpl.java:");
+    addToSocketPattern(set, "SocketInputStream.socketRead(SocketInputStream.java");
+    addToSocketPattern(set, "PlainSocketImpl.socketConnect(PlainSocketImpl.java");
+    addToSocketPattern(set, "ServerSocket.accept(ServerSocket.java");
+    SOCKET_PATTERNS = Collections.unmodifiableSet(set);
+  }
+  private static final int socketPattenLen = 31;
+  private static void addToSocketPattern(final Set<String> set, final String value) {
+    set.add(value.substring(0, socketPattenLen));
+  }
+  private static boolean isSocket(final Thread.State state, final Trace trace) {
+    final List<String> list = trace.getTrace();
+    // nothing interesting in first 2 lines
+    for (int i = 2; i < list.size(); i++) {
+      final String trim = list.get(i).trim();
+      if (trim.startsWith(SOCKET_GENERIC_PATTERN)) {
+        final String substring = trim.substring(SOCKET_GENERIC_PATTERN.length(), Math.min(SOCKET_GENERIC_PATTERN.length() + socketPattenLen, trim.length()));
+        if (SOCKET_PATTERNS.contains(substring)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private static final Icon PAUSE_ICON_DAEMON = new LayeredIcon(Paused, Daemon_sign);
@@ -202,6 +237,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private static final Icon IO_ICON_DAEMON = new LayeredIcon(IO, Daemon_sign);
 
   private static Icon getThreadStateIcon(final ThreadState threadState) {
+
     final boolean daemon = threadState.isDaemon();
     if (threadState.isSleeping()) {
       return daemon ? PAUSE_ICON_DAEMON : Paused;
