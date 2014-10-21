@@ -2,6 +2,7 @@ package github.irengrig.exploreTrace;
 
 import org.jetbrains.annotations.Nullable;
 
+import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +19,7 @@ public class Trace {
   private final boolean myIsDaemon;
   private final String myIdentifier;
   private final List<String> myTrace;
+  private Icon myIcon;
 
   private Trace(final String firstLine, String myThreadName, String myThreadGroup, int myPriority, Thread.State myState, String myStateWords,
                 boolean myIsDaemon, String myIdentifier, List<String> myTrace) {
@@ -81,6 +83,14 @@ public class Trace {
     return "Trace{" +
             "myThreadName='" + myThreadName + '\'' +
             '}';
+  }
+
+  public Icon getIcon() {
+    return myIcon;
+  }
+
+  public void setIcon(final Icon icon) {
+    myIcon = icon;
   }
 
   public static class Builder {

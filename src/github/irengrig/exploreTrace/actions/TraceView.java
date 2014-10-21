@@ -129,11 +129,26 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     for (Trace trace : myJdkThreads) {
       model.addElement(new TypedTrace<>(TraceType.jdk, trace));
     }
+    setIcons(model);
     if (! model.isEmpty()) {
       myNamesList.setSelectedIndex(0);
     }
     myNamesList.revalidate();
     myNamesList.repaint();
+  }
+
+  private void setIcons(final DefaultListModel model) {
+    for (int i = 0; i < model.getSize(); i++) {
+      final TypedTrace typedTrace = (TypedTrace) model.get(i);
+      final TraceType traceType = typedTrace.getTraceType();
+      if (TraceType.jdk.equals(traceType) || TraceType.single.equals(traceType)) {
+        final Trace t = (Trace) typedTrace.getT();
+        t.setIcon(getIconByState(t));
+      } else if (TraceType.pool.equals(traceType) || TraceType.similar.equals(traceType)) {
+        TracesClassifier.PoolDescriptor descriptor = (TracesClassifier.PoolDescriptor) typedTrace.getT();
+        descriptor.getTypicalTrace().setIcon(getIconByState(descriptor.getTypicalTrace()));
+      }
+    }
   }
 
   private static class MyNameListCellRenderer extends ColoredListCellRenderer {
@@ -143,8 +158,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
         if (TraceType.jdk.equals(((TypedTrace) value).getTraceType())) {
           append("[JDK] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
           final Trace t = (Trace) ((TypedTrace) value).getT();
-          final Thread.State state = t.getState();
-          setIconByState(state, t);
+          setIcon(t.getIcon());
           printTrace(t);
         }
         if (TraceType.pool.equals(((TypedTrace) value).getTraceType())) {
@@ -155,8 +169,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
         }
         if (TraceType.single.equals(((TypedTrace) value).getTraceType())) {
           final Trace t = (Trace) ((TypedTrace) value).getT();
-          final Thread.State state = t.getState();
-          setIconByState(state, t);
+          setIcon(t.getIcon());
           printTrace(t);
         }
       }
@@ -164,7 +177,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     private void printPool(final String name, final TracesClassifier.PoolDescriptor d) {
       final Trace trace = d.getTypicalTrace();
-      setIconByState(trace.getState(), trace);
+      setIcon(trace.getIcon());
       append("[" + name + ": " + d.getNumber() + "] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
       append(d.getTemplateName());
       printState(trace);
@@ -181,28 +194,26 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
         append(" (").append(stateWords).append(")");
       }
     }
+  }
 
-    // todo cache!!
-    private void setIconByState(final Thread.State state, final Trace trace) {
-      // todo plus library state
-
-      if (Thread.State.BLOCKED.equals(state)) {
-        setIcon(Locked);
-      } else if (Thread.State.RUNNABLE.equals(state)) {
-        if (isSocket(state, trace)) {
-          setIcon(Socket);
-        } else if (isIOOperation(state, trace)) {
-          setIcon(IO);
-        } else if (isWaitingForProcess(state, trace)) {
-          setIcon(AllIcons.RunConfigurations.Application);
-        } else {
-          setIcon(Running);
-        }
-      } else if (Thread.State.WAITING.equals(state) || Thread.State.TIMED_WAITING.equals(state)) {
-        setIcon(Paused);
+  private Icon getIconByState(final Trace trace) {
+    final Thread.State state = trace.getState();
+    if (Thread.State.BLOCKED.equals(state)) {
+      return Locked;
+    } else if (Thread.State.RUNNABLE.equals(state)) {
+      if (isSocket(state, trace)) {
+        return Socket;
+      } else if (isIOOperation(state, trace)) {
+        return IO;
+      } else if (isWaitingForProcess(state, trace)) {
+        return AllIcons.RunConfigurations.Application;
       } else {
-        setIcon(AllIcons.Debugger.KillProcess);
+        return Running;
       }
+    } else if (Thread.State.WAITING.equals(state) || Thread.State.TIMED_WAITING.equals(state)) {
+      return Paused;
+    } else {
+      return AllIcons.Debugger.KillProcess;
     }
   }
 
