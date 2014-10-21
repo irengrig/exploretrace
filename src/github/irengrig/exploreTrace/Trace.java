@@ -1,5 +1,6 @@
 package github.irengrig.exploreTrace;
 
+import github.irengrig.exploreTrace.actions.TraceCase;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
@@ -19,7 +20,7 @@ public class Trace {
   private final boolean myIsDaemon;
   private final String myIdentifier;
   private final List<String> myTrace;
-  private Icon myIcon;
+  private TraceCase myCase;
 
   private Trace(final String firstLine, String myThreadName, String myThreadGroup, int myPriority, Thread.State myState, String myStateWords,
                 boolean myIsDaemon, String myIdentifier, List<String> myTrace) {
@@ -85,12 +86,12 @@ public class Trace {
             '}';
   }
 
-  public Icon getIcon() {
-    return myIcon;
+  public TraceCase getCase() {
+    return myCase;
   }
 
-  public void setIcon(final Icon icon) {
-    myIcon = icon;
+  public void setCase(final TraceCase aCase) {
+    myCase = aCase;
   }
 
   public static class Builder {

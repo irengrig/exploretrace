@@ -31,7 +31,6 @@ import static com.intellij.icons.AllIcons.Debugger.ThreadStates.*;
  * Created by Irina.Chernushina on 8/16/2014.
  */
 public class TraceView extends JPanel implements TypeSafeDataProvider {
-  public static final String AT_JAVA = "at java.";
   private final Project myProject;
   private final List<Trace> myNotGrouped;
   private final List<TracesClassifier.PoolDescriptor> myPools;
@@ -96,40 +95,48 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     myConsole.clear();
     final int idx = myNamesList.getSelectedIndex();
     if (idx >= 0) {
-      final TypedTrace elementAt = (TypedTrace) ((DefaultListModel) myNamesList.getModel()).getElementAt(idx);
-      final Trace t;
-      if (! TraceType.pool.equals(elementAt.getTraceType()) && ! TraceType.similar.equals(elementAt.getTraceType())) {
-        t = (Trace) elementAt.getT();
-      } else {
-        t = ((TracesClassifier.PoolDescriptor) elementAt.getT()).getTypicalTrace();
-      }
+      final TypedTrace elementAt = (TypedTrace) myNamesList.getModel().getElementAt(idx);
+      final Trace t = getTrace(elementAt);
       final String join = StringUtil.join(t.getTrace(), "\n");
       myConsole.print(StringUtil.join(new String[]{t.getFirstLine(), join}, "\n"), ConsoleViewContentType.ERROR_OUTPUT);
     }
     myConsole.scrollTo(0);
   }
 
+  private static Trace getTrace(final TypedTrace typedTrace) {
+    if (! TraceType.pool.equals(typedTrace.getTraceType()) && ! TraceType.similar.equals(typedTrace.getTraceType())) {
+      return (Trace) typedTrace.getT();
+    } else {
+      return ((TracesClassifier.PoolDescriptor) typedTrace.getT()).getTypicalTrace();
+    }
+  }
+
   private void fillNamesList() {
     final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
     model.clear();
-    // todo here should be an order defined
 
+    final List<TypedTrace> list = new ArrayList<>();
     for (Trace trace : myNotGrouped) {
-      model.addElement(new TypedTrace<>(TraceType.single, trace));
+      list.add(new TypedTrace<>(TraceType.single, trace));
     }
     if (myEdtTrace != null) {
-      model.addElement(new TypedTrace<>(TraceType.jdk, myEdtTrace));
+      list.add(new TypedTrace<>(TraceType.edt, myEdtTrace));
     }
     for (TracesClassifier.PoolDescriptor pool : mySimilar) {
-      model.addElement(new TypedTrace<>(TraceType.similar, pool));
+      list.add(new TypedTrace<>(TraceType.similar, pool));
     }
     for (TracesClassifier.PoolDescriptor pool : myPools) {
-      model.addElement(new TypedTrace<>(TraceType.pool, pool));
+      list.add(new TypedTrace<>(TraceType.pool, pool));
     }
     for (Trace trace : myJdkThreads) {
-      model.addElement(new TypedTrace<>(TraceType.jdk, trace));
+      list.add(new TypedTrace<>(TraceType.jdk, trace));
     }
-    setIcons(model);
+    setCases(list);
+    Collections.sort(list, TypedTraceComparator.INSTANCE);
+
+    for (TypedTrace typedTrace : list) {
+      model.addElement(typedTrace);
+    }
     if (! model.isEmpty()) {
       myNamesList.setSelectedIndex(0);
     }
@@ -137,17 +144,10 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     myNamesList.repaint();
   }
 
-  private void setIcons(final DefaultListModel model) {
-    for (int i = 0; i < model.getSize(); i++) {
-      final TypedTrace typedTrace = (TypedTrace) model.get(i);
-      final TraceType traceType = typedTrace.getTraceType();
-      if (TraceType.jdk.equals(traceType) || TraceType.single.equals(traceType)) {
-        final Trace t = (Trace) typedTrace.getT();
-        t.setIcon(getIconByState(t));
-      } else if (TraceType.pool.equals(traceType) || TraceType.similar.equals(traceType)) {
-        TracesClassifier.PoolDescriptor descriptor = (TracesClassifier.PoolDescriptor) typedTrace.getT();
-        descriptor.getTypicalTrace().setIcon(getIconByState(descriptor.getTypicalTrace()));
-      }
+  private void setCases(final List<TypedTrace> model) {
+    for (TypedTrace typedTrace : model) {
+      final Trace trace = getTrace(typedTrace);
+      trace.setCase(TraceCase.identify(trace));
     }
   }
 
@@ -155,21 +155,22 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     @Override
     protected void customizeCellRenderer(final JList jList, final Object value, final int i, final boolean b, final boolean b1) {
       if (value instanceof TypedTrace) {
-        if (TraceType.jdk.equals(((TypedTrace) value).getTraceType())) {
+        final TraceType traceType = ((TypedTrace) value).getTraceType();
+        if (TraceType.jdk.equals(traceType) || TraceType.edt.equals(traceType)) {
           append("[JDK] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
           final Trace t = (Trace) ((TypedTrace) value).getT();
-          setIcon(t.getIcon());
+          setIcon(t.getCase().getIcon(t.isDaemon()));
           printTrace(t);
         }
-        if (TraceType.pool.equals(((TypedTrace) value).getTraceType())) {
+        if (TraceType.pool.equals(traceType)) {
           printPool("POOL", (TracesClassifier.PoolDescriptor) ((TypedTrace) value).getT());
         }
-        if (TraceType.similar.equals(((TypedTrace) value).getTraceType())) {
+        if (TraceType.similar.equals(traceType)) {
           printPool("SIMILAR", (TracesClassifier.PoolDescriptor) ((TypedTrace) value).getT());
         }
-        if (TraceType.single.equals(((TypedTrace) value).getTraceType())) {
+        if (TraceType.single.equals(traceType)) {
           final Trace t = (Trace) ((TypedTrace) value).getT();
-          setIcon(t.getIcon());
+          setIcon(t.getCase().getIcon(t.isDaemon()));
           printTrace(t);
         }
       }
@@ -177,7 +178,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     private void printPool(final String name, final TracesClassifier.PoolDescriptor d) {
       final Trace trace = d.getTypicalTrace();
-      setIcon(trace.getIcon());
+      setIcon(trace.getCase().getIcon(trace.isDaemon()));
       append("[" + name + ": " + d.getNumber() + "] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
       append(d.getTemplateName());
       printState(trace);
@@ -195,141 +196,6 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       }
     }
   }
-
-  private Icon getIconByState(final Trace trace) {
-    final Thread.State state = trace.getState();
-    if (Thread.State.BLOCKED.equals(state)) {
-      return Locked;
-    } else if (Thread.State.RUNNABLE.equals(state)) {
-      if (isSocket(state, trace)) {
-        return Socket;
-      } else if (isIOOperation(state, trace)) {
-        return IO;
-      } else if (isWaitingForProcess(state, trace)) {
-        return AllIcons.RunConfigurations.Application;
-      } else {
-        return Running;
-      }
-    } else if (Thread.State.WAITING.equals(state) || Thread.State.TIMED_WAITING.equals(state)) {
-      return Paused;
-    } else {
-      return AllIcons.Debugger.KillProcess;
-    }
-  }
-
-  private final static Set<String> SOCKET_PATTERNS;
-  static {
-    final Set<String> set = new HashSet<>();
-    addToSocketPattern(set, "PlainSocketImpl.socketAccept(PlainSocketImpl.java:");
-    addToSocketPattern(set, "PlainDatagramSocketImpl.receive(PlainDatagramSocketImpl.java:");
-    addToSocketPattern(set, "SocketInputStream.socketRead(SocketInputStream.java");
-    addToSocketPattern(set, "PlainSocketImpl.socketConnect(PlainSocketImpl.java");
-    addToSocketPattern(set, "ServerSocket.accept(ServerSocket.java");
-    SOCKET_PATTERNS = Collections.unmodifiableSet(set);
-  }
-  private static final int socketPattenLen = 31;
-  private static void addToSocketPattern(final Set<String> set, final String value) {
-    set.add(value.substring(0, socketPattenLen));
-  }
-  private static boolean isSocket(final Thread.State state, final Trace trace) {
-    final List<String> list = trace.getTrace();
-    // nothing interesting in first 2 lines
-    for (int i = 2; i < list.size(); i++) {
-      final String trim = list.get(i).trim();
-      if (trim.startsWith(SOCKET_GENERIC_PATTERN)) {
-        final String substring = trim.substring(SOCKET_GENERIC_PATTERN.length(), Math.min(SOCKET_GENERIC_PATTERN.length() + socketPattenLen, trim.length()));
-        if (SOCKET_PATTERNS.contains(substring)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  private static boolean isWaitingForProcess(final Thread.State state, final Trace trace) {
-    final List<String> list = trace.getTrace();
-    // nothing interesting in first 2 lines
-    for (int i = 2; i < list.size(); i++) {
-      final String trim = list.get(i).trim();
-      if (trim.startsWith("at java.lang.ProcessImpl.waitFor(")) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private final static Set<String> IO_PATTERNS;
-  static {
-    final Set<String> set = new HashSet<>();
-    set.add("java.nio.channels.Selector.select(");
-    set.add("java.io.FileInputStream.read(");
-    set.add("java.io.FileInputStream.readBytes(");
-    set.add("sun.nio.ch.SelectorImpl.select(");
-    IO_PATTERNS = Collections.unmodifiableSet(set);
-  }
-  private static boolean isIOOperation(final Thread.State state, final Trace trace) {
-    final List<String> list = trace.getTrace();
-    // nothing interesting in first 2 lines
-    for (int i = 2; i < list.size(); i++) {
-      final String trim = list.get(i).trim();
-      if (trim.startsWith("at ")) {
-        int idxBrace = trim.indexOf("(");
-        if (idxBrace > 0 && IO_PATTERNS.contains(trim.substring(3, idxBrace + 1))) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  private static final Icon PAUSE_ICON_DAEMON = new LayeredIcon(Paused, Daemon_sign);
-  private static final Icon LOCKED_ICON_DAEMON = new LayeredIcon(Locked, Daemon_sign);
-  private static final Icon RUNNING_ICON_DAEMON = new LayeredIcon(Running, Daemon_sign);
-  private static final Icon SOCKET_ICON_DAEMON = new LayeredIcon(Socket, Daemon_sign);
-  private static final Icon IDLE_ICON_DAEMON = new LayeredIcon(Idle, Daemon_sign);
-  private static final Icon EDT_BUSY_ICON_DAEMON = new LayeredIcon(EdtBusy, Daemon_sign);
-  private static final Icon IO_ICON_DAEMON = new LayeredIcon(IO, Daemon_sign);
-
-  private static Icon getThreadStateIcon(final ThreadState threadState) {
-
-    final boolean daemon = threadState.isDaemon();
-    if (threadState.isSleeping()) {
-      return daemon ? PAUSE_ICON_DAEMON : Paused;
-    }
-    if (threadState.isWaiting()) {
-      return daemon ? LOCKED_ICON_DAEMON : Locked;
-    }
-    if (threadState.getOperation() == ThreadOperation.Socket) {
-      return daemon ? SOCKET_ICON_DAEMON : Socket;
-    }
-    if (threadState.getOperation() == ThreadOperation.IO) {
-      return daemon ? IO_ICON_DAEMON : IO;
-    }
-    if (threadState.isEDT()) {
-      if ("idle".equals(threadState.getThreadStateDetail())) {
-        return daemon ? IDLE_ICON_DAEMON : Idle;
-      }
-      return daemon ? EDT_BUSY_ICON_DAEMON : EdtBusy;
-    }
-    return daemon ? RUNNING_ICON_DAEMON : Running;
-  }
-
-  /*private void updateThreadList() {
-    String text = myFilterPanel.isVisible() ? myFilterField.getText() : "";
-    DefaultListModel model = (DefaultListModel)myThreadList.getModel();
-    model.clear();
-    for (ThreadState state : myThreadDump) {
-      if (StringUtil.containsIgnoreCase(state.getStackTrace(), text) || StringUtil.containsIgnoreCase(state.getName(), text)) {
-        //noinspection unchecked
-        model.addElement(state);
-      }
-    }
-    if (!model.isEmpty()) {
-      myThreadList.setSelectedIndex(0);
-    }
-    myThreadList.revalidate();
-    myThreadList.repaint();
-  }*/
 
   @Override
   public void calcData(final DataKey dataKey, final DataSink dataSink) {
@@ -355,6 +221,27 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   }
 
   private static enum TraceType {
-    single, pool, jdk, similar
+    single, edt, similar, pool, jdk;
+  }
+
+  private static class TypedTraceComparator implements Comparator<TypedTrace> {
+    public static TypedTraceComparator INSTANCE = new TypedTraceComparator();
+
+    @Override
+    public int compare(final TypedTrace o1, final TypedTrace o2) {
+      int compareType = Integer.compare(o1.getTraceType().ordinal(), o2.getTraceType().ordinal());
+      if (compareType != 0) return compareType;
+
+      final Trace trace1 = getTrace(o1);
+      final Trace trace2 = getTrace(o2);
+
+      int compareCases = Integer.compare(trace1.getCase().ordinal(), trace2.getCase().ordinal());
+      if (compareCases != 0) return compareCases;
+
+      int comparePri = Integer.compare(trace2.getPriority(), trace1.getPriority());
+      if (comparePri != 0) return comparePri;
+
+      return trace1.getThreadName().compareToIgnoreCase(trace2.getThreadName());
+    }
   }
 }
