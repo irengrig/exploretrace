@@ -31,6 +31,7 @@ import static com.intellij.icons.AllIcons.Debugger.ThreadStates.*;
  * Created by Irina.Chernushina on 8/16/2014.
  */
 public class TraceView extends JPanel implements TypeSafeDataProvider {
+  public static final String AT_JAVA = "at java.";
   private final Project myProject;
   private final List<Trace> myNotGrouped;
   private final List<TracesClassifier.PoolDescriptor> myPools;
@@ -183,11 +184,17 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     // todo cache!!
     private void setIconByState(final Thread.State state, final Trace trace) {
+      // todo plus library state
+
       if (Thread.State.BLOCKED.equals(state)) {
         setIcon(Locked);
       } else if (Thread.State.RUNNABLE.equals(state)) {
         if (isSocket(state, trace)) {
           setIcon(Socket);
+        } else if (isIOOperation(state, trace)) {
+          setIcon(IO);
+        } else if (isWaitingForProcess(state, trace)) {
+          setIcon(AllIcons.RunConfigurations.Application);
         } else {
           setIcon(Running);
         }
@@ -221,6 +228,42 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       if (trim.startsWith(SOCKET_GENERIC_PATTERN)) {
         final String substring = trim.substring(SOCKET_GENERIC_PATTERN.length(), Math.min(SOCKET_GENERIC_PATTERN.length() + socketPattenLen, trim.length()));
         if (SOCKET_PATTERNS.contains(substring)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean isWaitingForProcess(final Thread.State state, final Trace trace) {
+    final List<String> list = trace.getTrace();
+    // nothing interesting in first 2 lines
+    for (int i = 2; i < list.size(); i++) {
+      final String trim = list.get(i).trim();
+      if (trim.startsWith("at java.lang.ProcessImpl.waitFor(")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private final static Set<String> IO_PATTERNS;
+  static {
+    final Set<String> set = new HashSet<>();
+    set.add("java.nio.channels.Selector.select(");
+    set.add("java.io.FileInputStream.read(");
+    set.add("java.io.FileInputStream.readBytes(");
+    set.add("sun.nio.ch.SelectorImpl.select(");
+    IO_PATTERNS = Collections.unmodifiableSet(set);
+  }
+  private static boolean isIOOperation(final Thread.State state, final Trace trace) {
+    final List<String> list = trace.getTrace();
+    // nothing interesting in first 2 lines
+    for (int i = 2; i < list.size(); i++) {
+      final String trim = list.get(i).trim();
+      if (trim.startsWith("at ")) {
+        int idxBrace = trim.indexOf("(");
+        if (idxBrace > 0 && IO_PATTERNS.contains(trim.substring(3, idxBrace + 1))) {
           return true;
         }
       }
