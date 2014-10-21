@@ -31,6 +31,16 @@ public class TracesClassifier {
     filterOutPools();
     filterOutSimilar();
     myNotGrouped.addAll(myInTraces);
+    adjustJdk();
+  }
+
+  private void adjustJdk() {
+    for (Trace jdkThread : myJdkThreads) {
+      if (jdkThread.getFirstLine() != null && jdkThread.getFirstLine().contains("waiting on condition")) {
+        jdkThread.setState(Thread.State.WAITING);
+        jdkThread.setStateWords("WAITING (waiting on condition)");
+      }
+    }
   }
 
   private void filterOutPools() {

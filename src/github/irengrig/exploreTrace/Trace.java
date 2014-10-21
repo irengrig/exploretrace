@@ -13,8 +13,8 @@ public class Trace {
   private final String myThreadName;
   private final String myThreadGroup;
   private final int myPriority;
-  private final Thread.State myState;
-  private final String myStateWords;
+  private Thread.State myState;
+  private String myStateWords;
   private final boolean myIsDaemon;
   private final String myIdentifier;
   private final List<String> myTrace;
@@ -30,6 +30,14 @@ public class Trace {
     this.myIsDaemon = myIsDaemon;
     this.myIdentifier = myIdentifier;
     this.myTrace = myTrace;
+  }
+
+  public void setState(final Thread.State state) {
+    myState = state;
+  }
+
+  public void setStateWords(final String stateWords) {
+    myStateWords = stateWords;
   }
 
   public String getThreadName() {
