@@ -1,9 +1,12 @@
 package github.irengrig.exploreTrace.actions;
 
+import com.intellij.codeEditor.JavaEditorFileSwapper;
 import com.intellij.execution.filters.HyperlinkInfo;
+import com.intellij.ide.highlighter.JavaClassFileType;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Condition;
 import com.intellij.openapi.util.Pair;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.packageDependencies.DefaultScopesProvider;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
@@ -82,7 +85,9 @@ public class LineParser {
             myResult.add(Pair.<String, HyperlinkInfo>create(mySourceLine, null));
             return;
         }
-        final GlobalSearchScope scope = GlobalSearchScope.allScope(project);
+        final GlobalSearchScope scope = new EverythingGlobalScope(project);
+//        final GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
+//        final GlobalSearchScope scope = GlobalSearchScope.projectScope(project);
         JavaPsiFacade psiFacade = JavaPsiFacade.getInstance(project);
         PsiClass[] result = psiFacade.findClasses(myClassName, scope);
 
@@ -93,17 +98,30 @@ public class LineParser {
                 return myClassName.equals(psiClass.getQualifiedName());
             }
         });
+        final List<Pair<PsiClass, VirtualFile>> convertedFiles = new ArrayList<>();
+        for (PsiClass psiClass : psiClasses) {
+            VirtualFile virtualFile = psiClass.getContainingFile().getVirtualFile();
+            if (virtualFile.getFileType().equals(JavaClassFileType.INSTANCE)) {
+                VirtualFile sourceFile = JavaEditorFileSwapper.findSourceFile(project, virtualFile);
+                if (sourceFile != null) {
+                    virtualFile = sourceFile;
+                }
+            }
+            convertedFiles.add(Pair.create(psiClass, virtualFile));
+        }
 
-        final List<PsiMethod> psiMethods = new ArrayList<>();
-        final Function<PsiClass, PsiMethod[]> function = getMethodsFromClass();
-        final Iterator<PsiClass> iterator = psiClasses.iterator();
+        final List<Pair<VirtualFile, PsiMethod>> psiMethods = new ArrayList<>();
+        final Function<Pair<PsiClass, VirtualFile>, PsiMethod[]> function = getMethodsFromClass();
+        final Iterator<Pair<PsiClass, VirtualFile>> iterator = convertedFiles.iterator();
         while (iterator.hasNext()) {
-            final PsiClass psiClass = iterator.next();
-            PsiMethod[] methods = function.fun(psiClass);
+            final Pair<PsiClass, VirtualFile> pair = iterator.next();
+            PsiMethod[] methods = function.fun(pair);
             if (methods.length == 0) {
                 iterator.remove();
             }
-            psiMethods.addAll(Arrays.asList(methods));
+            for (PsiMethod method : methods) {
+                psiMethods.add(Pair.create(pair.getSecond(), method));
+            }
         }
 
         if (psiClasses.isEmpty()) {
@@ -114,19 +132,19 @@ public class LineParser {
                     new MethodHyperlinkInfo(psiMethods)));
             myResult.add(Pair.<String, HyperlinkInfo>create("(", null));
             myResult.add(Pair.<String, HyperlinkInfo>create(myLine.substring(myOpen + 1, myClose),
-                    new MultiClassesHyperlinkInfo(psiClasses, myLineNum)));
+                    new MultiClassesHyperlinkInfo(convertedFiles, myLineNum)));
             myResult.add(Pair.<String, HyperlinkInfo>create(")", null));
         }
     }
 
-    private Function<PsiClass, PsiMethod[]> getMethodsFromClass() {
-        return new Function<PsiClass, PsiMethod[]>() {
+    private Function<Pair<PsiClass, VirtualFile>, PsiMethod[]> getMethodsFromClass() {
+        return new Function<Pair<PsiClass, VirtualFile>, PsiMethod[]>() {
             @Override
-            public PsiMethod[] fun(final PsiClass psiClass) {
+            public PsiMethod[] fun(final Pair<PsiClass, VirtualFile> pair) {
                 if (myMethod.equals("<init>")) {
-                    return psiClass.getConstructors();
+                    return pair.getFirst().getConstructors();
                 } else {
-                    final PsiMethod[] methods = psiClass.getMethods();
+                    final PsiMethod[] methods = pair.getFirst().getMethods();
                     final List<PsiMethod> methodList = new ArrayList<>(2);
                     for (PsiMethod psiMethod : methods) {
                         if (myMethod.equals(psiMethod.getName())) {

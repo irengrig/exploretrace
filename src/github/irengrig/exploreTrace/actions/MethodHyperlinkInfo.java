@@ -4,6 +4,8 @@ import com.intellij.execution.filters.HyperlinkInfo;
 import com.intellij.execution.filters.OpenFileHyperlinkInfo;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.util.Pair;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiMethod;
 import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.components.JBList;
@@ -18,33 +20,33 @@ import java.util.List;
  * Created by ira on 22.10.2014.
  */
 public class MethodHyperlinkInfo implements HyperlinkInfo {
-    private final List<PsiMethod> myPsiMethods;
+    private final List<Pair<VirtualFile, PsiMethod>> myPsiMethods;
 
-    public MethodHyperlinkInfo(final List<PsiMethod> psiMethods) {
+    public MethodHyperlinkInfo(final List<Pair<VirtualFile, PsiMethod>> psiMethods) {
         myPsiMethods = psiMethods;
-        Collections.sort(myPsiMethods, new Comparator<PsiMethod>() {
+        Collections.sort(myPsiMethods, new Comparator<Pair<VirtualFile, PsiMethod>>() {
             @Override
-            public int compare(final PsiMethod o1, final PsiMethod o2) {
-                return getMethodDescription(o1).compareTo(getMethodDescription(o2));
+            public int compare(final Pair<VirtualFile, PsiMethod> o1, final Pair<VirtualFile, PsiMethod> o2) {
+                return getMethodDescription(o1.getSecond()).compareTo(getMethodDescription(o2.getSecond()));
             }
         });
     }
 
     @Override
     public void navigate(final Project project) {
-        final List<PsiMethod> m = new ArrayList<>(myPsiMethods.size());
-        for (PsiMethod psiMethod : myPsiMethods) {
-            if (psiMethod.isValid()) m.add(psiMethod);
+        final List<Pair<VirtualFile, PsiMethod>> m = new ArrayList<>(myPsiMethods.size());
+        for (Pair<VirtualFile, PsiMethod> psiMethod : myPsiMethods) {
+            if (psiMethod.getSecond().isValid()) m.add(psiMethod);
         }
         if (m.isEmpty()) return;
-        if (m.size() > 0) {
+        if (m.size() > 1) {
             final JBList jbList = new JBList(m);
             jbList.setCellRenderer(new ColoredListCellRenderer() {
                 @Override
                 protected void customizeCellRenderer(final JList jList, final Object o, final int i, final boolean b, final boolean b1) {
-                    if (o instanceof PsiMethod) {
-                        final PsiMethod m = (PsiMethod) o;
-                        String text = getMethodDescription(m);
+                    if (o instanceof Pair) {
+                        final Pair<VirtualFile, PsiMethod> m = (Pair<VirtualFile, PsiMethod>) o;
+                        String text = getMethodDescription(m.getSecond());
                         append(text);
                     }
                 }
@@ -53,26 +55,20 @@ public class MethodHyperlinkInfo implements HyperlinkInfo {
                     .setTitle("Choose Target Method").setItemChoosenCallback(new Runnable() {
                 @Override
                 public void run() {
-                    final PsiMethod selectedMethod = (PsiMethod) jbList.getSelectedValue();
+                    final Pair<VirtualFile, PsiMethod> selectedMethod = (Pair<VirtualFile, PsiMethod>) jbList.getSelectedValue();
                     navigateToMethod(selectedMethod, project);
                 }
-            });
+            }).createPopup().showInFocusCenter();
         } else {
             navigateToMethod(m.get(0), project);
         }
     }
 
     private String getMethodDescription(final PsiMethod m) {
-        String text = "";
-        if (m.getContainingClass() != null) {
-            text += m.getContainingClass().getQualifiedName();
-            text += ".";
-        }
-        text += m.getName();
-        return text;
+        return m.getPresentation().getPresentableText();
     }
 
-    private void navigateToMethod(final PsiMethod selectedMethod, Project project) {
-        new OpenFileHyperlinkInfo(project, selectedMethod.getContainingFile().getVirtualFile(), selectedMethod.getTextOffset()).navigate(project);
+    private void navigateToMethod(final Pair<VirtualFile, PsiMethod> pair, Project project) {
+        pair.getSecond().navigate(true);
     }
 }
