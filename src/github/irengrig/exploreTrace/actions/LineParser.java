@@ -27,12 +27,13 @@ import java.util.*;
  * Created by ira on 22.10.2014.
  */
 public class LineParser {
-    private final String mySourceLine;
+    private final static String ourIndent = "        ";
     private String myLine;
     private String myClassName;
     private String myMethod;
     private int myLineNum;
     private boolean mySuccessful;
+    private boolean myAt;
     private List<Pair<String, HyperlinkInfo>> myResult;
     private int myClassBoundary;
     private int myOpen;
@@ -40,7 +41,6 @@ public class LineParser {
 
     public LineParser(final String line) {
         myLine = line.trim();
-        mySourceLine = line;
         myResult = new ArrayList<>();
     }
 
@@ -51,6 +51,7 @@ public class LineParser {
 
     private boolean parseImpl() {
         if (! myLine.startsWith("at ")) return true;
+        myAt = true;
         myLine = myLine.substring(3);
 
         myOpen = myLine.indexOf('(');
@@ -82,7 +83,11 @@ public class LineParser {
 
     private void findObjectsAndFillResult(final Project project) {
         if (! mySuccessful) {
-            myResult.add(Pair.<String, HyperlinkInfo>create(mySourceLine, null));
+            if (myAt) {
+                myResult.add(Pair.<String, HyperlinkInfo>create(ourIndent + "at " + myLine, null));
+            } else {
+                myResult.add(Pair.<String, HyperlinkInfo>create(ourIndent + myLine, null));
+            }
             return;
         }
         final GlobalSearchScope scope = new EverythingGlobalScope(project);
@@ -125,9 +130,9 @@ public class LineParser {
         }
 
         if (psiClasses.isEmpty()) {
-            myResult.add(Pair.<String, HyperlinkInfo>create("at " + myLine, null));
+            myResult.add(Pair.<String, HyperlinkInfo>create(ourIndent + "at " + myLine, null));
         } else {
-            myResult.add(Pair.<String, HyperlinkInfo>create("at " + myLine.substring(0, myClassBoundary + 1), null));
+            myResult.add(Pair.<String, HyperlinkInfo>create(ourIndent + "at " + myLine.substring(0, myClassBoundary + 1), null));
             myResult.add(Pair.<String, HyperlinkInfo>create(myLine.substring(myClassBoundary + 1, myOpen),
                     new MethodHyperlinkInfo(psiMethods)));
             myResult.add(Pair.<String, HyperlinkInfo>create("(", null));

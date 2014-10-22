@@ -122,6 +122,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       myConsole.print(t.getFirstLine(), ConsoleViewContentType.NORMAL_OUTPUT);
       myConsole.print("\n", ConsoleViewContentType.NORMAL_OUTPUT);
       if (t.getStateWords() != null) {
+        myConsole.print("   java.lang.Thread.State: ", ConsoleViewContentType.NORMAL_OUTPUT);
         myConsole.print(t.getStateWords(), ConsoleViewContentType.NORMAL_OUTPUT);
         myConsole.print("\n", ConsoleViewContentType.NORMAL_OUTPUT);
       }
@@ -137,9 +138,6 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
         }
         myConsole.print("\n", ConsoleViewContentType.NORMAL_OUTPUT);
       }
-
-      /*final String join = StringUtil.join(t.getTrace(), "\n");
-      myConsole.print(StringUtil.join(new String[]{t.getFirstLine(), join}, "\n"), ConsoleViewContentType.ERROR_OUTPUT);*/
     }
     myConsole.scrollTo(0);
   }
