@@ -66,6 +66,6 @@ public class MultiClassesHyperlinkInfo implements HyperlinkInfo {
     }
 
     private void navigateToClass(final Pair<PsiClass, VirtualFile> pair, Project project) {
-        new OpenFileHyperlinkInfo(project, pair.getSecond(), myLine).navigate(project);
+        new OpenFileHyperlinkInfo(project, pair.getSecond(), myLine - 1).navigate(project);
     }
 }
