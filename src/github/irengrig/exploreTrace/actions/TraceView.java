@@ -1,5 +1,7 @@
 package github.irengrig.exploreTrace.actions;
 
+import com.intellij.execution.filters.HyperlinkInfo;
+import com.intellij.execution.filters.OpenFileHyperlinkInfo;
 import com.intellij.execution.filters.TextConsoleBuilder;
 import com.intellij.execution.filters.TextConsoleBuilderFactory;
 import com.intellij.execution.ui.ConsoleView;
@@ -17,6 +19,8 @@ import com.intellij.unscramble.ThreadState;
 import github.irengrig.exploreTrace.Trace;
 import github.irengrig.exploreTrace.TracesClassifier;
 import org.jetbrains.annotations.NonNls;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -91,16 +95,69 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     add(mySplitter, BorderLayout.CENTER);
   }
 
+  private void precalculateDetails(final List<TypedTrace> list) {
+    for (TypedTrace typedTrace : list) {
+      final List<LineInfo> result = new ArrayList<>();
+      final Trace tr = getTrace(typedTrace);
+      final List<String> trace = tr.getTrace();
+      for (String s : trace) {
+        final LineParser lineParser = new LineParser(s);
+        lineParser.parse(myProject);
+        final LineInfo lineInfo = new LineInfo();
+        for (Pair<String, HyperlinkInfo> pair : lineParser.getResult()) {
+          lineInfo.add(pair.getFirst(), pair.getSecond());
+        }
+        result.add(lineInfo);
+      }
+      typedTrace.setDetails(result);
+    }
+  }
+
   private void updateDetails() {
     myConsole.clear();
     final int idx = myNamesList.getSelectedIndex();
     if (idx >= 0) {
-      final TypedTrace elementAt = (TypedTrace) myNamesList.getModel().getElementAt(idx);
-      final Trace t = getTrace(elementAt);
-      final String join = StringUtil.join(t.getTrace(), "\n");
-      myConsole.print(StringUtil.join(new String[]{t.getFirstLine(), join}, "\n"), ConsoleViewContentType.ERROR_OUTPUT);
+      final TypedTrace typedTrace = (TypedTrace) myNamesList.getModel().getElementAt(idx);
+      final Trace t = getTrace(typedTrace);
+      myConsole.print(t.getFirstLine(), ConsoleViewContentType.NORMAL_OUTPUT);
+      myConsole.print("\n", ConsoleViewContentType.NORMAL_OUTPUT);
+      if (t.getStateWords() != null) {
+        myConsole.print(t.getStateWords(), ConsoleViewContentType.NORMAL_OUTPUT);
+        myConsole.print("\n", ConsoleViewContentType.NORMAL_OUTPUT);
+      }
+
+      for (Object o : typedTrace.getDetails()) {
+        final LineInfo lineInfo = (LineInfo) o;
+        for (Pair<String, HyperlinkInfo> pair : lineInfo.getFragments()) {
+          if (pair.getSecond() == null) {
+            myConsole.print(pair.getFirst(), ConsoleViewContentType.NORMAL_OUTPUT);
+          } else {
+            myConsole.printHyperlink(pair.getFirst(), pair.getSecond());
+          }
+        }
+        myConsole.print("\n", ConsoleViewContentType.NORMAL_OUTPUT);
+      }
+
+      /*final String join = StringUtil.join(t.getTrace(), "\n");
+      myConsole.print(StringUtil.join(new String[]{t.getFirstLine(), join}, "\n"), ConsoleViewContentType.ERROR_OUTPUT);*/
     }
     myConsole.scrollTo(0);
+  }
+
+  private static class LineInfo {
+    private final List<Pair<String, HyperlinkInfo>> myFragments;
+
+    public LineInfo() {
+      myFragments = new ArrayList<>();
+    }
+
+    public void add(@NotNull final String text, @Nullable HyperlinkInfo hyperlinkInfo) {
+      myFragments.add(Pair.create(text, hyperlinkInfo));
+    }
+
+    public List<Pair<String, HyperlinkInfo>> getFragments() {
+      return myFragments;
+    }
   }
 
   private static Trace getTrace(final TypedTrace typedTrace) {
@@ -132,6 +189,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       list.add(new TypedTrace<>(TraceType.jdk, trace));
     }
     setCases(list);
+    precalculateDetails(list);
     Collections.sort(list, TypedTraceComparator.INSTANCE);
 
     for (TypedTrace typedTrace : list) {
@@ -205,10 +263,19 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private static class TypedTrace<T> {
     private final TraceType myTraceType;
     private final T myT;
+    private List<LineInfo> myDetails;
 
     public TypedTrace(final TraceType traceType, final T t) {
       myTraceType = traceType;
       myT = t;
+    }
+
+    public List<LineInfo> getDetails() {
+      return myDetails;
+    }
+
+    public void setDetails(final List<LineInfo> details) {
+      myDetails = details;
     }
 
     public TraceType getTraceType() {
