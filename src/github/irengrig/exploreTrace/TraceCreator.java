@@ -25,6 +25,10 @@ public class TraceCreator {
     createTraceObjects();
   }
 
+  public boolean parsedSomething() {
+    return ! myCreatedTraces.isEmpty();
+  }
+
   public List<Trace> getCreatedTraces() {
     return myCreatedTraces;
   }

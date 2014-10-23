@@ -1,19 +1,24 @@
 package github.irengrig.exploreTrace.actions;
 
 import com.intellij.ide.actions.CloseAction;
+import com.intellij.notification.NotificationGroup;
+import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.EmptyRunnable;
+import com.intellij.openapi.vcs.ui.VcsBalloonProblemNotifier;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowAnchor;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import com.intellij.ui.content.ContentManager;
+import com.intellij.util.Alarm;
 import com.intellij.util.ContentsUtil;
 import github.irengrig.exploreTrace.TraceCreator;
 import github.irengrig.exploreTrace.TraceReader;
@@ -29,6 +34,9 @@ import java.io.IOException;
  * Created by Irina.Chernushina on 8/16/2014.
  */
 public class ShowTraceViewAction extends AnAction {
+
+  public static final String EXPLORE_STACK_TRACE = "Explore Stack Trace";
+
   public ShowTraceViewAction() {
     super("Explore Stack Trace");
   }
@@ -53,7 +61,13 @@ public class ShowTraceViewAction extends AnAction {
     } catch (IOException e) {
       // ignore
     }
-    if(traceReader.getTraces().isEmpty()) return;
+    if(traceReader.getTraces().isEmpty()) {
+      NotificationGroup.balloonGroup(EXPLORE_STACK_TRACE).
+              createNotification(EXPLORE_STACK_TRACE + ": Nothing like Java thread dump found in the clipboard buffer.\n" +
+                      "Copy thread dump into clipboard and invoke action again.", NotificationType.INFORMATION).
+              notify(project);
+      return;
+    }
     final TraceCreator traceCreator = new TraceCreator(traceReader);
     traceCreator.createTraces();
     final TracesClassifier classifier = new TracesClassifier(traceCreator.getCreatedTraces());
@@ -61,7 +75,7 @@ public class ShowTraceViewAction extends AnAction {
 
     final ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
 
-    final String name = "Explore Stack Trace";
+    final String name = EXPLORE_STACK_TRACE;
     ToolWindow toolWindow = toolWindowManager.getToolWindow(name);
     if (toolWindow == null) {
       toolWindow = toolWindowManager.registerToolWindow(name, true, ToolWindowAnchor.BOTTOM, project);

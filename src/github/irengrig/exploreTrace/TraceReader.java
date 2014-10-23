@@ -53,7 +53,7 @@ public class TraceReader {
       }
       if (! eaten && ! StringUtil.isEmptyOrSpaces(line)) {
         // todo debug
-        System.out.println("Problem! " + line);
+//        System.out.println("Problem! " + line);
       }
     }
     for (BaseParser parser : myParsers) {
