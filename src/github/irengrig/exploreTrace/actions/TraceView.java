@@ -9,6 +9,8 @@ import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.DialogWrapper;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
@@ -26,6 +28,8 @@ import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.util.*;
 import java.util.List;
 
@@ -93,6 +97,60 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     add(ActionManager.getInstance().createActionToolbar(ActionPlaces.MAIN_TOOLBAR, myDefaultActionGroup, false).getComponent(), BorderLayout.WEST);
     add(mySplitter, BorderLayout.CENTER);
+
+    addDeleteHandler();
+  }
+
+  private void addDeleteHandler() {
+    myNamesList.addKeyListener(new KeyAdapter() {
+      @Override
+      public void keyReleased(final KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_DELETE) {
+          int[] selectedIndices = myNamesList.getSelectedIndices();
+          if (selectedIndices.length == myNamesList.getItemsCount()) return;
+
+          if (selectedIndices.length > 1) {
+            final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
+            final List<String> names = new ArrayList<>(selectedIndices.length);
+            for (int selectedIndice : selectedIndices) {
+              final TypedTrace typedTrace = (TypedTrace) model.get(selectedIndice);
+              final Trace trace = getTrace(typedTrace);
+              names.add("'" + trace.getThreadName() + "'");
+            }
+
+            final int result = Messages.showYesNoDialog(myProject,
+                    "Do you want to delete " + selectedIndices.length + " threads " + StringUtil.join(names, ", ") + "?\nThis action can not be undone.",
+                    "Delete Threads from Thread Dump", Messages.getQuestionIcon());
+            if (result == Messages.OK) {
+              Arrays.sort(selectedIndices);
+              for (int i = selectedIndices.length - 1; i >= 0; i--) {
+                int selectedIndice = selectedIndices[i];
+                model.remove(selectedIndice);
+              }
+              myNamesList.revalidate();
+              myNamesList.repaint();
+            }
+
+          } else {
+            final int selectedIndex = selectedIndices[0];
+            final TypedTrace typedTrace = (TypedTrace) myNamesList.getSelectedValue();
+            if (typedTrace != null) {
+              final Trace trace = getTrace(typedTrace);
+              // todo maybe change presentation
+              final int result = Messages.showYesNoDialog(myProject,
+                      "Do you want to delete thread '" + trace.getThreadName() + "'?\nThis action can not be undone.",
+                      "Delete Thread from Thread Dump", Messages.getQuestionIcon());
+              if (result == Messages.OK) {
+                ((DefaultListModel) myNamesList.getModel()).remove(selectedIndex);
+                myNamesList.revalidate();
+                myNamesList.repaint();
+              }
+            }
+          }
+        }
+        super.keyReleased(e);
+      }
+    });
   }
 
   private void precalculateDetails(final List<TypedTrace> list) {
