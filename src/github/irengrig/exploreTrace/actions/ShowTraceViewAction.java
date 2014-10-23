@@ -12,7 +12,9 @@ import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowAnchor;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.content.Content;
+import com.intellij.ui.content.ContentFactory;
 import com.intellij.ui.content.ContentManager;
+import com.intellij.util.ContentsUtil;
 import github.irengrig.exploreTrace.TraceCreator;
 import github.irengrig.exploreTrace.TraceReader;
 import github.irengrig.exploreTrace.TracesClassifier;
@@ -58,10 +60,13 @@ public class ShowTraceViewAction extends AnAction {
     classifier.execute();
 
     final ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
-    // todo multiple
+
     final String name = "Explore Stack Trace";
-    final ToolWindow toolWindow = toolWindowManager.registerToolWindow(name, true, ToolWindowAnchor.BOTTOM, project);
-    toolWindow.setToHideOnEmptyContent(true);
+    ToolWindow toolWindow = toolWindowManager.getToolWindow(name);
+    if (toolWindow == null) {
+      toolWindow = toolWindowManager.registerToolWindow(name, true, ToolWindowAnchor.BOTTOM, project);
+      toolWindow.setToHideOnEmptyContent(true);
+    }
 
     final ContentManager contentManager = toolWindow.getContentManager();
     final DefaultActionGroup defaultActionGroup = new DefaultActionGroup();
@@ -74,11 +79,16 @@ public class ShowTraceViewAction extends AnAction {
     });
     final TraceView traceView = new TraceView(project, classifier.getNotGrouped(), classifier.getPools(), classifier.getSimilar(),
             classifier.getJdkThreads(), classifier.getEdtTrace(), defaultActionGroup);
-    // todo creation parameters?
-    final Content content = contentManager.getFactory().createContent(traceView, "", false);
+
+    int cnt = contentManager.getContentCount();
+    final Content content = contentManager.getFactory().createContent(traceView, "Dump #" + (cnt + 1), false);
     content.setPreferredFocusableComponent(traceView.getNamesList());
     //content.setCloseable(true);
-    contentManager.addContent(content);
+//    contentManager.addContent(content);
+
+//    Content content = ContentFactory.SERVICE.getInstance().createContent(myFileHistoryPanel, actionName, true);
+    ContentsUtil.addOrReplaceContent(contentManager, content, true);
+
 
     toolWindow.activate(EmptyRunnable.getInstance());
   }
