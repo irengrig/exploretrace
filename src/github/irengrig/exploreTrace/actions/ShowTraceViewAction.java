@@ -62,14 +62,15 @@ public class ShowTraceViewAction extends AnAction {
       // ignore
     }
     if(traceReader.getTraces().isEmpty()) {
-      NotificationGroup.balloonGroup(EXPLORE_STACK_TRACE).
-              createNotification(EXPLORE_STACK_TRACE + ": Nothing like Java thread dump found in the clipboard buffer.\n" +
-                      "Copy thread dump into clipboard and invoke action again.", NotificationType.INFORMATION).
-              notify(project);
+      showBalloon(project);
       return;
     }
     final TraceCreator traceCreator = new TraceCreator(traceReader);
     traceCreator.createTraces();
+    if (! traceCreator.parsedSomething()) {
+      showBalloon(project);
+      return;
+    }
     final TracesClassifier classifier = new TracesClassifier(traceCreator.getCreatedTraces());
     classifier.execute();
 
@@ -105,5 +106,12 @@ public class ShowTraceViewAction extends AnAction {
 
 
     toolWindow.activate(EmptyRunnable.getInstance());
+  }
+
+  private void showBalloon(final Project project) {
+    NotificationGroup.balloonGroup(EXPLORE_STACK_TRACE).
+            createNotification(EXPLORE_STACK_TRACE + ": Nothing like Java thread dump found in the clipboard buffer.\n" +
+                    "Copy thread dump into clipboard and invoke action again.", NotificationType.INFORMATION).
+            notify(project);
   }
 }
