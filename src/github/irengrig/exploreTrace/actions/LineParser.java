@@ -90,19 +90,15 @@ public class LineParser {
             }
             return;
         }
-        final GlobalSearchScope scope = new EverythingGlobalScope(project);
-//        final GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
-//        final GlobalSearchScope scope = GlobalSearchScope.projectScope(project);
-        JavaPsiFacade psiFacade = JavaPsiFacade.getInstance(project);
-        PsiClass[] result = psiFacade.findClasses(myClassName, scope);
 
+        PsiClass[] result = findClasses(project);
         List<PsiClass> psiClasses = Arrays.asList(result);
-        psiClasses = ContainerUtil.filter(psiClasses, new Condition<PsiClass>() {
+        /*psiClasses = ContainerUtil.filter(psiClasses, new Condition<PsiClass>() {
             @Override
             public boolean value(final PsiClass psiClass) {
                 return myClassName.equals(psiClass.getQualifiedName());
             }
-        });
+        });*/
         final List<Pair<PsiClass, VirtualFile>> convertedFiles = new ArrayList<>();
         for (PsiClass psiClass : psiClasses) {
             VirtualFile virtualFile = psiClass.getContainingFile().getVirtualFile();
@@ -139,6 +135,30 @@ public class LineParser {
             myResult.add(Pair.<String, HyperlinkInfo>create(myLine.substring(myOpen + 1, myClose),
                     new MultiClassesHyperlinkInfo(convertedFiles, myLineNum)));
             myResult.add(Pair.<String, HyperlinkInfo>create(")", null));
+        }
+    }
+
+    private PsiClass[] findClasses(final Project project) {
+        final GlobalSearchScope scope = new EverythingGlobalScope(project);
+        JavaPsiFacade psiFacade = JavaPsiFacade.getInstance(project);
+
+        int idxInner = myClassName.indexOf("$");
+        if (idxInner > 0) {
+            final List<PsiClass> result = new ArrayList<>();
+            final String outerName = myClassName.substring(0, idxInner);
+            final String innerName = myClassName.substring(idxInner + 1);
+            final PsiClass[] outerClasses = psiFacade.findClasses(outerName, scope);
+            for (PsiClass outerClass : outerClasses) {
+                final PsiClass[] inner = outerClass.getInnerClasses();
+                for (PsiClass psiClass : inner) {
+                    if (innerName.equals(psiClass.getName())) {
+                        result.add(psiClass);
+                    }
+                }
+            }
+            return result.toArray(new PsiClass[result.size()]);
+        } else {
+            return psiFacade.findClasses(myClassName, scope);
         }
     }
 
