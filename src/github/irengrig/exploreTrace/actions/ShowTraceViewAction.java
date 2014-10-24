@@ -1,5 +1,6 @@
 package github.irengrig.exploreTrace.actions;
 
+import com.intellij.icons.AllIcons;
 import com.intellij.ide.actions.CloseAction;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationType;
@@ -10,7 +11,10 @@ import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.InputValidator;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.EmptyRunnable;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vcs.ui.VcsBalloonProblemNotifier;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowAnchor;
@@ -84,7 +88,23 @@ public class ShowTraceViewAction extends AnAction {
     }
 
     final ContentManager contentManager = toolWindow.getContentManager();
+    int cnt = contentManager.getContentCount();
+    final String contentId = "Dump #" + (cnt + 1);
     final DefaultActionGroup defaultActionGroup = new DefaultActionGroup();
+    addActions(project, toolWindowManager, name, defaultActionGroup);
+
+    final TraceView traceView = new TraceView(project, classifier.getNotGrouped(), classifier.getPools(), classifier.getSimilar(),
+            classifier.getJdkThreads(), classifier.getEdtTrace(), defaultActionGroup, contentId);
+
+    final Content content = contentManager.getFactory().createContent(traceView, contentId, false);
+    content.setPreferredFocusableComponent(traceView.getNamesList());
+
+    ContentsUtil.addOrReplaceContent(contentManager, content, true);
+
+    toolWindow.activate(EmptyRunnable.getInstance());
+  }
+
+  private void addActions(final Project project, final ToolWindowManager toolWindowManager, final String name, final DefaultActionGroup defaultActionGroup) {
     defaultActionGroup.add(new CloseAction() {
       @Override
       public void actionPerformed(final AnActionEvent e) {
@@ -92,20 +112,6 @@ public class ShowTraceViewAction extends AnAction {
         toolWindowManager.unregisterToolWindow(name);
       }
     });
-    final TraceView traceView = new TraceView(project, classifier.getNotGrouped(), classifier.getPools(), classifier.getSimilar(),
-            classifier.getJdkThreads(), classifier.getEdtTrace(), defaultActionGroup);
-
-    int cnt = contentManager.getContentCount();
-    final Content content = contentManager.getFactory().createContent(traceView, "Dump #" + (cnt + 1), false);
-    content.setPreferredFocusableComponent(traceView.getNamesList());
-    //content.setCloseable(true);
-//    contentManager.addContent(content);
-
-//    Content content = ContentFactory.SERVICE.getInstance().createContent(myFileHistoryPanel, actionName, true);
-    ContentsUtil.addOrReplaceContent(contentManager, content, true);
-
-
-    toolWindow.activate(EmptyRunnable.getInstance());
   }
 
   private void showBalloon(final Project project) {

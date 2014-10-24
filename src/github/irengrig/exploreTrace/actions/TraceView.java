@@ -10,12 +10,17 @@ import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
+import com.intellij.openapi.ui.InputValidator;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.*;
 import com.intellij.ui.components.JBList;
+import com.intellij.ui.content.Content;
+import com.intellij.ui.content.ContentManager;
 import com.intellij.unscramble.ThreadOperation;
 import com.intellij.unscramble.ThreadState;
 import github.irengrig.exploreTrace.Trace;
@@ -56,7 +61,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
   public TraceView(final Project project, final List<Trace> notGrouped,
                    final List<TracesClassifier.PoolDescriptor> pools, final List<TracesClassifier.PoolDescriptor> similar,
-                   final List<Trace> jdkThreads, final Trace edtTrace, DefaultActionGroup defaultActionGroup) {
+                   final List<Trace> jdkThreads, final Trace edtTrace, DefaultActionGroup defaultActionGroup, final String contentId) {
     super(new BorderLayout());
     myProject = project;
     myNotGrouped = notGrouped;
@@ -67,7 +72,46 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     myDefaultActionGroup = defaultActionGroup;
     myListMapping = new ArrayList<>();
     initUi();
+    createActions(contentId);
     updateDetails();
+  }
+
+  private void createActions(final String contentId) {
+    myDefaultActionGroup.add(new AnAction("Edit Dump Name", "Edit thread dump name", AllIcons.ToolbarDecorator.Edit) {
+      @Override
+      public void actionPerformed(final AnActionEvent anActionEvent) {
+        final Project project = PlatformDataKeys.PROJECT.getData(anActionEvent.getDataContext());
+        if (project == null) return;
+
+        final String text = Messages.showInputDialog(project, "Edit thread dump name:",
+                ShowTraceViewAction.EXPLORE_STACK_TRACE,
+                AllIcons.ToolbarDecorator.Edit, contentId, new InputValidator() {
+                  @Override
+                  public boolean checkInput(final String s) {
+                    return ! StringUtil.isEmptyOrSpaces(s);
+                  }
+
+                  @Override
+                  public boolean canClose(final String s) {
+                    return ! StringUtil.isEmptyOrSpaces(s);
+                  }
+                }
+        );
+        if (! StringUtil.isEmptyOrSpaces(text)) {
+          final ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
+          final ToolWindow toolWindow = toolWindowManager.getToolWindow(ShowTraceViewAction.EXPLORE_STACK_TRACE);
+          if (toolWindow != null) {
+            final ContentManager cm = toolWindow.getContentManager();
+            final Content[] contents = cm.getContents();
+            for (Content content : contents) {
+              if (contentId.equals(content.getTabName())) {
+                content.setDisplayName(text);
+              }
+            }
+          }
+        }
+      }
+    });
   }
 
   public JBList getNamesList() {
