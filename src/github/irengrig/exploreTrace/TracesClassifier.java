@@ -35,11 +35,14 @@ public class TracesClassifier {
   }
 
   private void adjustJdk() {
+    int cnt = 0;
     for (Trace jdkThread : myJdkThreads) {
       if (jdkThread.getFirstLine() != null && jdkThread.getFirstLine().contains("waiting on condition")) {
         jdkThread.setState(Thread.State.WAITING);
         jdkThread.setStateWords("WAITING (waiting on condition)");
       }
+      jdkThread.setInitialOrderInGroup(cnt);
+      ++ cnt;
     }
   }
 

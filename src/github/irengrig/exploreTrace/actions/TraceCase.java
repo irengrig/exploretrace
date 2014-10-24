@@ -50,7 +50,7 @@ public enum TraceCase {
         return isDaemon ? getDaemonIcon() : getIcon();
     }
 
-    public static TraceCase identify(final Trace trace) {
+    public static TraceCase identify(final TraceView.TraceType traceType, final Trace trace) {
         if (JvmSystemThreadChecker.isEdt(trace)) {
             if (trace.getStateWords().contains("idle")) {
                 return edtIdle;
@@ -75,6 +75,9 @@ public enum TraceCase {
         } else if (Thread.State.TIMED_WAITING.equals(state)) {
             return pausedTimed;
         } else {
+            if (TraceView.TraceType.jdk.equals(traceType) && trace.getFirstLine() != null && trace.getFirstLine().contains("runnable")) {
+                return runnable;
+            }
             return unknown;
         }
     }

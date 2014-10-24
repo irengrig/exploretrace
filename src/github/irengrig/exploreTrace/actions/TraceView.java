@@ -261,7 +261,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private void setCases(final List<TypedTrace> model) {
     for (TypedTrace typedTrace : model) {
       final Trace trace = getTrace(typedTrace);
-      trace.setCase(TraceCase.identify(trace));
+      trace.setCase(TraceCase.identify(typedTrace.getTraceType(), trace));
     }
   }
 
@@ -343,7 +343,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     }
   }
 
-  private static enum TraceType {
+  public static enum TraceType {
     single, edt, similar, pool, jdk;
   }
 
@@ -357,6 +357,11 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
       final Trace trace1 = getTrace(o1);
       final Trace trace2 = getTrace(o2);
+
+      if (TraceType.jdk.equals(o1.getTraceType())) {
+        int compareOrderInGroup = Integer.compare(trace1.getInitialOrderInGroup(), trace2.getInitialOrderInGroup());
+        if (compareOrderInGroup != 0) return compareOrderInGroup;
+      }
 
       int compareCases = Integer.compare(trace1.getCase().ordinal(), trace2.getCase().ordinal());
       if (compareCases != 0) return compareCases;

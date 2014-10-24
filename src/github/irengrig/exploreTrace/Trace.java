@@ -11,6 +11,7 @@ import java.util.List;
  * Created by Irina.Chernushina on 7/7/2014.
  */
 public class Trace {
+  private int myInitialOrderInGroup;
   private final String myFirstLine;
   private final String myThreadName;
   private final String myThreadGroup;
@@ -33,6 +34,7 @@ public class Trace {
     this.myIsDaemon = myIsDaemon;
     this.myIdentifier = myIdentifier;
     this.myTrace = myTrace;
+    myInitialOrderInGroup = 0;
   }
 
   public void setState(final Thread.State state) {
@@ -77,6 +79,14 @@ public class Trace {
 
   public String getFirstLine() {
     return myFirstLine;
+  }
+
+  public int getInitialOrderInGroup() {
+    return myInitialOrderInGroup;
+  }
+
+  public void setInitialOrderInGroup(final int initialOrderInGroup) {
+    myInitialOrderInGroup = initialOrderInGroup;
   }
 
   @Override
