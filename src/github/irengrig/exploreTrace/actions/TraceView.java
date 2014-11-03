@@ -11,17 +11,20 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.InputValidator;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.Splitter;
+import com.intellij.openapi.ui.popup.*;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.*;
+import com.intellij.ui.components.JBCheckBox;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentManager;
-import com.intellij.util.Consumer;
+import com.intellij.ui.popup.PopupFactoryImpl;
 import com.intellij.util.Processor;
-import com.intellij.util.ui.UIUtil;
+import com.intellij.util.ui.FormBuilder;
 import github.irengrig.exploreTrace.Trace;
 import github.irengrig.exploreTrace.TracesClassifier;
 import org.jetbrains.annotations.NonNls;
@@ -32,6 +35,8 @@ import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.*;
@@ -55,6 +60,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private List<Pair<TraceType, Integer>> myListMapping;
   @NonNls
   private static final String SOCKET_GENERIC_PATTERN = "at java.net.";
+  private List<TypedTrace> myTraces;
 
   public TraceView(final Project project, final List<Trace> notGrouped,
                    final List<TracesClassifier.PoolDescriptor> pools, final List<TracesClassifier.PoolDescriptor> similar,
@@ -74,41 +80,8 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   }
 
   private void createActions(final String contentId) {
-    myDefaultActionGroup.add(new AnAction("Edit Dump Name", "Edit thread dump name", AllIcons.ToolbarDecorator.Edit) {
-      @Override
-      public void actionPerformed(final AnActionEvent anActionEvent) {
-        final Project project = PlatformDataKeys.PROJECT.getData(anActionEvent.getDataContext());
-        if (project == null) return;
-
-        final String text = Messages.showInputDialog(project, "Edit thread dump name:",
-                ShowTraceViewAction.EXPLORE_STACK_TRACE,
-                AllIcons.ToolbarDecorator.Edit, contentId, new InputValidator() {
-                  @Override
-                  public boolean checkInput(final String s) {
-                    return ! StringUtil.isEmptyOrSpaces(s);
-                  }
-
-                  @Override
-                  public boolean canClose(final String s) {
-                    return ! StringUtil.isEmptyOrSpaces(s);
-                  }
-                }
-        );
-        if (! StringUtil.isEmptyOrSpaces(text)) {
-          final ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
-          final ToolWindow toolWindow = toolWindowManager.getToolWindow(ShowTraceViewAction.EXPLORE_STACK_TRACE);
-          if (toolWindow != null) {
-            final ContentManager cm = toolWindow.getContentManager();
-            final Content[] contents = cm.getContents();
-            for (Content content : contents) {
-              if (contentId.equals(content.getTabName())) {
-                content.setDisplayName(text);
-              }
-            }
-          }
-        }
-      }
-    });
+    myDefaultActionGroup.add(new MyEditDumpNameAction(contentId));
+    myDefaultActionGroup.add(new MyFilterAction());
   }
 
   public JBList getNamesList() {
@@ -185,9 +158,12 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       public boolean process(final int[] selectedIndices) {
         if (selectedIndices[0] == 0) return false;
         final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
-        final Object previous = model.get(selectedIndices[0] - 1);
+        final TypedTrace previous = (TypedTrace) model.get(selectedIndices[0] - 1);
         final int anchor = myNamesList.getAnchorSelectionIndex();
         final int lead = myNamesList.getLeadSelectionIndex();
+
+        modifyList(previous, (TypedTrace) model.get(selectedIndices[selectedIndices.length - 1]), false);
+
         model.add(selectedIndices[selectedIndices.length - 1] + 1, previous);
         model.remove(selectedIndices[0] - 1);
         myNamesList.addSelectionInterval(anchor - 1, lead - 1);
@@ -202,9 +178,11 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       public boolean process(final int[] selectedIndices) {
         if (selectedIndices[selectedIndices.length - 1] == (myNamesList.getItemsCount() - 1)) return false;
         final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
-        final Object next = model.get(selectedIndices[selectedIndices.length - 1] + 1);
+        final TypedTrace next = (TypedTrace) model.get(selectedIndices[selectedIndices.length - 1] + 1);
         final int anchor = myNamesList.getAnchorSelectionIndex();
         final int lead = myNamesList.getLeadSelectionIndex();
+
+        modifyList(next, (TypedTrace) model.get(selectedIndices[0]), true);
 
         model.add(selectedIndices[0], next);
         model.remove(selectedIndices[selectedIndices.length - 1] + 2);
@@ -236,6 +214,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
         for (int i = selectedIndices.length - 1; i >= 0; i--) {
           int selectedIndice = selectedIndices[i];
           model.remove(selectedIndice);
+          modifyList((TypedTrace) model.get(selectedIndice), null, false);
         }
         myNamesList.revalidate();
         myNamesList.repaint();
@@ -252,12 +231,31 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
                 "Delete Thread from Thread Dump", Messages.getQuestionIcon());
         if (result == Messages.OK) {
           ((DefaultListModel) myNamesList.getModel()).remove(selectedIndex);
+          modifyList(typedTrace, null, false);
           myNamesList.revalidate();
           myNamesList.repaint();
         }
       }
     }
     return false;
+  }
+
+  private void modifyList(@NotNull final TypedTrace delete, @Nullable final TypedTrace anchor, final boolean beforeAnchor) {
+    if (anchor != null) {
+      int newIdx = -1;
+      for (int i = 0; i < myTraces.size(); i++) {
+        final TypedTrace trace = myTraces.get(i);
+        if (anchor.equals(trace)) {
+          newIdx = beforeAnchor ? i : (i + 1);
+          break;
+        }
+      }
+      if (newIdx == -1) assert false;
+      else {
+        myTraces.add(newIdx, delete);
+      }
+    }
+    myTraces.remove(delete);
   }
 
   private void precalculateDetails(final List<TypedTrace> list) {
@@ -335,27 +333,28 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
     model.clear();
 
-    final List<TypedTrace> list = new ArrayList<>();
+    int cnt = 0;
+    myTraces = new ArrayList<>();
     for (Trace trace : myNotGrouped) {
-      list.add(new TypedTrace<>(TraceType.single, trace));
+      myTraces.add(new TypedTrace<>(++cnt, TraceType.single, trace));
     }
     if (myEdtTrace != null) {
-      list.add(new TypedTrace<>(TraceType.edt, myEdtTrace));
+      myTraces.add(new TypedTrace<>(++cnt, TraceType.edt, myEdtTrace));
     }
     for (TracesClassifier.PoolDescriptor pool : mySimilar) {
-      list.add(new TypedTrace<>(TraceType.similar, pool));
+      myTraces.add(new TypedTrace<>(++cnt, TraceType.similar, pool));
     }
     for (TracesClassifier.PoolDescriptor pool : myPools) {
-      list.add(new TypedTrace<>(TraceType.pool, pool));
+      myTraces.add(new TypedTrace<>(++cnt, TraceType.pool, pool));
     }
     for (Trace trace : myJdkThreads) {
-      list.add(new TypedTrace<>(TraceType.jdk, trace));
+      myTraces.add(new TypedTrace<>(++cnt, TraceType.jdk, trace));
     }
-    setCases(list);
-    precalculateDetails(list);
-    Collections.sort(list, TypedTraceComparator.INSTANCE);
+    setCases(myTraces);
+    precalculateDetails(myTraces);
+    Collections.sort(myTraces, TypedTraceComparator.INSTANCE);
 
-    for (TypedTrace typedTrace : list) {
+    for (TypedTrace typedTrace : myTraces) {
       model.addElement(typedTrace);
     }
     if (! model.isEmpty()) {
@@ -424,13 +423,25 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   }
 
   private static class TypedTrace<T> {
+    private boolean myIsVisible;
+    private final int myId;
     private final TraceType myTraceType;
     private final T myT;
     private List<LineInfo> myDetails;
 
-    public TypedTrace(final TraceType traceType, final T t) {
+    public TypedTrace(final int id, final TraceType traceType, final T t) {
+      myId = id;
       myTraceType = traceType;
       myT = t;
+      myIsVisible = true;
+    }
+
+    public boolean isVisible() {
+      return myIsVisible;
+    }
+
+    public void setVisible(final boolean isVisible) {
+      myIsVisible = isVisible;
     }
 
     public List<LineInfo> getDetails() {
@@ -447,6 +458,23 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     public T getT() {
       return myT;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      final TypedTrace that = (TypedTrace) o;
+
+      if (myId != that.myId) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      return myId;
     }
   }
 
@@ -477,6 +505,193 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       if (comparePri != 0) return comparePri;
 
       return trace1.getThreadName().compareToIgnoreCase(trace2.getThreadName());
+    }
+  }
+
+  private static class MyEditDumpNameAction extends AnAction {
+    private final String myContentId;
+
+    public MyEditDumpNameAction(final String contentId) {
+      super("Edit Dump Name", "Edit thread dump name", AllIcons.ToolbarDecorator.Edit);
+      myContentId = contentId;
+    }
+
+    @Override
+    public void actionPerformed(final AnActionEvent anActionEvent) {
+      final Project project = PlatformDataKeys.PROJECT.getData(anActionEvent.getDataContext());
+      if (project == null) return;
+
+      final String text = Messages.showInputDialog(project, "Edit thread dump name:",
+              ShowTraceViewAction.EXPLORE_STACK_TRACE,
+              AllIcons.ToolbarDecorator.Edit, myContentId, new InputValidator() {
+                @Override
+                public boolean checkInput(final String s) {
+                  return !StringUtil.isEmptyOrSpaces(s);
+                }
+
+                @Override
+                public boolean canClose(final String s) {
+                  return !StringUtil.isEmptyOrSpaces(s);
+                }
+              }
+      );
+      if (! StringUtil.isEmptyOrSpaces(text)) {
+        final ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
+        final ToolWindow toolWindow = toolWindowManager.getToolWindow(ShowTraceViewAction.EXPLORE_STACK_TRACE);
+        if (toolWindow != null) {
+          final ContentManager cm = toolWindow.getContentManager();
+          final Content[] contents = cm.getContents();
+          for (Content content : contents) {
+            if (myContentId.equals(content.getTabName())) {
+              content.setDisplayName(text);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private static class FilterSelector {
+    private final JBCheckBox myJdk;
+    private final JBCheckBox myPools;
+    private final JBCheckBox mySocket;
+    private final JBCheckBox mySimilar;
+    private final JPanel myPanel;
+    private final JBCheckBox myIo;
+    private final JBCheckBox myProcess;
+    private Runnable myOnOk;
+
+    public FilterSelector() {
+      // todo define pools another way? also by checking it is just waiting inside scheduled executor?
+      myJdk = new JBCheckBox("JDK");
+      myPools = new JBCheckBox("Pools");
+      mySocket = new JBCheckBox("Socket operation");
+      myIo = new JBCheckBox("I/O operation");
+      myProcess = new JBCheckBox("Waiting for process");
+      mySimilar = new JBCheckBox("Similar");
+
+      final JButton ok = new JButton("OK");
+      ok.addActionListener(new ActionListener() {
+        @Override
+        public void actionPerformed(final ActionEvent e) {
+          myOnOk.run();
+        }
+      });
+      final FormBuilder builder = FormBuilder.createFormBuilder()
+              .addComponent(new JBLabel("Select categories to show:"))
+              .addComponent(myJdk)
+              .addComponent(myPools)
+              .addComponent(mySocket)
+              .addComponent(mySimilar)
+              .addComponent(ok);
+      myPanel = builder.getPanel();
+      myPanel.addKeyListener(new KeyAdapter() {
+        @Override
+        public void keyReleased(final KeyEvent e) {
+          if (e.isControlDown() && e.getKeyCode() == KeyEvent.VK_ENTER) {
+            myOnOk.run();
+          }
+          super.keyReleased(e);
+        }
+      });
+    }
+
+    public void setOnOk(@NotNull final Runnable onOk) {
+      myOnOk = onOk;
+    }
+
+    public JBCheckBox getJdk() {
+      return myJdk;
+    }
+
+    public JPanel getPanel() {
+      return myPanel;
+    }
+
+    public Set<Pair<TraceType, TraceCase>> getHiddenTypes() {
+      final Set<Pair<TraceType, TraceCase>> set = new HashSet<>();
+      if (! myJdk.isSelected()) set.add(Pair.create(TraceType.jdk, TraceCase.unknown));
+      if (! myPools.isSelected()) set.add(Pair.create(TraceType.pool, TraceCase.unknown));
+      if (! mySocket.isSelected()) set.add(Pair.create(TraceType.single, TraceCase.socket));
+      if (! myIo.isSelected()) set.add(Pair.create(TraceType.single, TraceCase.io));
+      if (! myProcess.isSelected()) set.add(Pair.create(TraceType.single, TraceCase.waitingProcess));
+      if (! mySimilar.isSelected()) set.add(Pair.create(TraceType.similar, TraceCase.unknown));
+      return set;
+    }
+  }
+
+  private class MyFilterAction extends AnAction {
+    public MyFilterAction() {
+      super("Show/Hide", "Show/hide threads or categories", AllIcons.General.Filter);
+    }
+
+    @Override
+    public void update(@NotNull final AnActionEvent e) {
+      // todo: tooltip
+      super.update(e);
+    }
+
+    @Override
+    public void actionPerformed(@NotNull final AnActionEvent anActionEvent) {
+      final Project project = PlatformDataKeys.PROJECT.getData(anActionEvent.getDataContext());
+      if (project == null) return;
+
+      final FilterSelector filterSelector = new FilterSelector();
+      final ComponentPopupBuilder builder = PopupFactoryImpl.getInstance()
+              .createComponentPopupBuilder(filterSelector.getPanel(), filterSelector.getJdk())
+              .setCancelOnClickOutside(true);
+      final JBPopup popup = builder.createPopup();
+      filterSelector.setOnOk(new Runnable() {
+        @Override
+        public void run() {
+          popup.closeOk(null);
+          processFilterResults(filterSelector.getHiddenTypes());
+        }
+      });
+      popup.showInBestPositionFor(anActionEvent.getDataContext());
+    }
+
+    private void processFilterResults(final Set<Pair<TraceType, TraceCase>> hiddenTypes) {
+      for (TypedTrace trace : myTraces) {
+        trace.setVisible(true);
+      }
+      final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
+      final Set selectedValuesList = new HashSet(myNamesList.getSelectedValuesList());
+      final Object anchorItem = selectedValuesList.isEmpty() ? null : model.get(myNamesList.getAnchorSelectionIndex());
+      final Object leadItem = selectedValuesList.isEmpty() ? null : model.get(myNamesList.getLeadSelectionIndex());
+
+      for (Pair<TraceType, TraceCase> pair : hiddenTypes) {
+        for (TypedTrace trace : myTraces) {
+          if (pair.getFirst().equals(trace.getTraceType())
+                  && (TraceCase.unknown.equals(pair.getSecond()) || pair.getSecond().equals(getTrace(trace).getCase()))) {
+            trace.setVisible(false);
+          }
+        }
+      }
+      model.clear();
+      int cnt = 0;
+      final Set<Integer> selected = new HashSet<>();
+      int anchorIdx = -1;
+      int leadIdx = -1;
+      for (TypedTrace trace : myTraces) {
+        if (trace.isVisible()) {
+          model.add(cnt, trace);
+          if (selectedValuesList.contains(trace)) {
+            selected.add(cnt);
+            if (anchorItem.equals(trace)) anchorIdx = cnt;
+            if (leadItem.equals(trace)) leadIdx = cnt;
+          }
+          ++cnt;
+        }
+      }
+      for (Integer idx : selected) {
+        myNamesList.addSelectionInterval(idx, idx);
+      }
+      if (anchorIdx >= 0 && leadIdx >= 0) {
+        myNamesList.addSelectionInterval(anchorIdx, leadIdx);
+      }
+      myNamesList.revalidate();
+      myNamesList.repaint();
     }
   }
 }
