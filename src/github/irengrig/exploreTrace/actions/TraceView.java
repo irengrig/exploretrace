@@ -507,12 +507,12 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     @Override
     public int compare(final TypedTrace o1, final TypedTrace o2) {
       int compareType = Integer.compare(o1.getTraceType().ordinal(), o2.getTraceType().ordinal());
-      if (compareType != 0) return compareType;
+      if (compareType != 0 && ! TraceType.edt.equals(o1.getTraceType()) && ! TraceType.edt.equals(o2.getTraceType())) return compareType;
 
       final Trace trace1 = getTrace(o1);
       final Trace trace2 = getTrace(o2);
 
-      if (TraceType.jdk.equals(o1.getTraceType())) {
+      if (TraceType.jdk.equals(o1.getTraceType()) && compareType == 0) {
         int compareOrderInGroup = Integer.compare(trace1.getInitialOrderInGroup(), trace2.getInitialOrderInGroup());
         if (compareOrderInGroup != 0) return compareOrderInGroup;
       }

@@ -22,10 +22,10 @@ import static com.intellij.icons.AllIcons.Debugger.ThreadStates.*;
 public enum TraceCase {
     runnable(Running, null),
     blocked(Locked, null),
-    paused(Paused, null),
-    pausedTimed(Paused, null),
     edtBusy(EdtBusy, null),
     edtIdle(Idle, null),
+    paused(Paused, null),
+    pausedTimed(Paused, null),
     socket(Socket, "Socket"),
     io(IO, "I/O"),
     waitingProcess(AllIcons.RunConfigurations.Application, "Waiting for process"),
