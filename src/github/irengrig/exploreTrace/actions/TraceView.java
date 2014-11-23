@@ -23,8 +23,10 @@ import com.intellij.ui.components.JBList;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentManager;
 import com.intellij.ui.popup.PopupFactoryImpl;
+import com.intellij.util.BooleanFunction;
 import com.intellij.util.Processor;
 import com.intellij.util.ui.FormBuilder;
+import com.intellij.util.ui.UIUtil;
 import github.irengrig.exploreTrace.Trace;
 import github.irengrig.exploreTrace.TracesClassifier;
 import org.jetbrains.annotations.NonNls;
@@ -56,8 +58,8 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private JBList myNamesList;
   private Splitter mySplitter;
   private ConsoleView myConsole;
+  private Set<Pair<TraceType, TraceCase>> myCurrentFilter;
 
-  private List<Pair<TraceType, Integer>> myListMapping;
   @NonNls
   private static final String SOCKET_GENERIC_PATTERN = "at java.net.";
   private List<TypedTrace> myTraces;
@@ -73,8 +75,18 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     myJdkThreads = jdkThreads;
     myEdtTrace = edtTrace;
     myDefaultActionGroup = defaultActionGroup;
-    myListMapping = new ArrayList<>();
+
+    myCurrentFilter = new HashSet<>();
+    myCurrentFilter.add(Pair.create(TraceType.jdk, TraceCase.unknown));
+    myCurrentFilter.add(Pair.create(TraceType.pool, TraceCase.unknown));
+
     initUi();
+    processFilterResults(myCurrentFilter);
+    final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
+    if (model.isEmpty()) {
+      myCurrentFilter.clear();
+      processFilterResults(myCurrentFilter);
+    }
     createActions(contentId);
     updateDetails();
   }
@@ -555,11 +567,12 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     private final JBCheckBox myJdk;
     private final JBCheckBox myPools;
     private final JBCheckBox mySocket;
-    private final JBCheckBox mySimilar;
+//    private final JBCheckBox mySimilar;
     private final JPanel myPanel;
     private final JBCheckBox myIo;
     private final JBCheckBox myProcess;
     private Runnable myOnOk;
+    private final JButton myOk;
 
     public FilterSelector() {
       // todo define pools another way? also by checking it is just waiting inside scheduled executor?
@@ -568,22 +581,30 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       mySocket = new JBCheckBox("Socket operation");
       myIo = new JBCheckBox("I/O operation");
       myProcess = new JBCheckBox("Waiting for process");
-      mySimilar = new JBCheckBox("Similar");
+//      mySimilar = new JBCheckBox("Similar");
 
-      final JButton ok = new JButton("OK");
-      ok.addActionListener(new ActionListener() {
+      myOk = new JButton("Apply");
+      myOk.addActionListener(new ActionListener() {
         @Override
         public void actionPerformed(final ActionEvent e) {
           myOnOk.run();
         }
       });
+      final JPanel wrapper = new JPanel(new BorderLayout());
+      wrapper.add(myOk, BorderLayout.EAST);
+
       final FormBuilder builder = FormBuilder.createFormBuilder()
-              .addComponent(new JBLabel("Select categories to show:"))
-              .addComponent(myJdk)
-              .addComponent(myPools)
               .addComponent(mySocket)
-              .addComponent(mySimilar)
-              .addComponent(ok);
+              .addComponent(myIo)
+              .addComponent(myProcess)
+              .addComponent(myPools)
+              .addComponent(myJdk)
+              .addComponent(disabledCheckBox("Runnable"))
+              .addComponent(disabledCheckBox("Blocked"))
+              .addComponent(disabledCheckBox("Waiting"))
+              .addComponent(disabledCheckBox("Timed waiting"))
+//              .addComponent(mySimilar)
+              .addLabeledComponent("", wrapper);
       myPanel = builder.getPanel();
       myPanel.addKeyListener(new KeyAdapter() {
         @Override
@@ -594,6 +615,17 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
           super.keyReleased(e);
         }
       });
+    }
+
+    public JButton getOk() {
+      return myOk;
+    }
+
+    private JBCheckBox disabledCheckBox(final String text) {
+      final JBCheckBox jbCheckBox = new JBCheckBox(text);
+      jbCheckBox.setEnabled(false);
+      jbCheckBox.setSelected(true);
+      return jbCheckBox;
     }
 
     public void setOnOk(@NotNull final Runnable onOk) {
@@ -608,6 +640,14 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       return myPanel;
     }
 
+    public void init(Set<Pair<TraceType, TraceCase>> hidden) {
+      myJdk.setSelected(! hidden.contains(Pair.create(TraceType.jdk, TraceCase.unknown)));
+      myPools.setSelected(! hidden.contains(Pair.create(TraceType.pool, TraceCase.unknown)));
+      mySocket.setSelected(! hidden.contains(Pair.create(TraceType.single, TraceCase.socket)));
+      myIo.setSelected(! hidden.contains(Pair.create(TraceType.single, TraceCase.io)));
+      myProcess.setSelected(! hidden.contains(Pair.create(TraceType.single, TraceCase.waitingProcess)));
+    }
+
     public Set<Pair<TraceType, TraceCase>> getHiddenTypes() {
       final Set<Pair<TraceType, TraceCase>> set = new HashSet<>();
       if (! myJdk.isSelected()) set.add(Pair.create(TraceType.jdk, TraceCase.unknown));
@@ -615,7 +655,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       if (! mySocket.isSelected()) set.add(Pair.create(TraceType.single, TraceCase.socket));
       if (! myIo.isSelected()) set.add(Pair.create(TraceType.single, TraceCase.io));
       if (! myProcess.isSelected()) set.add(Pair.create(TraceType.single, TraceCase.waitingProcess));
-      if (! mySimilar.isSelected()) set.add(Pair.create(TraceType.similar, TraceCase.unknown));
+//      if (! mySimilar.isSelected()) set.add(Pair.create(TraceType.similar, TraceCase.unknown));
       return set;
     }
   }
@@ -637,61 +677,87 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       if (project == null) return;
 
       final FilterSelector filterSelector = new FilterSelector();
+      filterSelector.init(myCurrentFilter);
+      final JButton ok = filterSelector.getOk();
       final ComponentPopupBuilder builder = PopupFactoryImpl.getInstance()
-              .createComponentPopupBuilder(filterSelector.getPanel(), filterSelector.getJdk())
+              .createComponentPopupBuilder(filterSelector.getPanel(), filterSelector.getOk())
+              .setTitle("Select categories to show:")
+              .setModalContext(true)
+              .setFocusable(true)
+              .setFocusOwners(filterSelector.getPanel().getComponents())
+              .setMovable(true)
+              .setKeyEventHandler(new BooleanFunction<KeyEvent>() {
+                @Override
+                public boolean fun(final KeyEvent keyEvent) {
+                  if (keyEvent.isControlDown() && keyEvent.getKeyCode() == KeyEvent.VK_ENTER) {
+                    ok.doClick();
+                    return true;
+                  }
+                  return false;
+                }
+              })
+              .setCancelOnOtherWindowOpen(true)
               .setCancelOnClickOutside(true);
       final JBPopup popup = builder.createPopup();
+      popup.setRequestFocus(true);
       filterSelector.setOnOk(new Runnable() {
         @Override
         public void run() {
           popup.closeOk(null);
-          processFilterResults(filterSelector.getHiddenTypes());
+          final Set<Pair<TraceType, TraceCase>> hiddenTypes = filterSelector.getHiddenTypes();
+          myCurrentFilter = hiddenTypes;
+          processFilterResults(hiddenTypes);
         }
       });
       popup.showInBestPositionFor(anActionEvent.getDataContext());
+      //popup.showInFocusCenter();
     }
+  }
 
-    private void processFilterResults(final Set<Pair<TraceType, TraceCase>> hiddenTypes) {
+  private void processFilterResults(final Set<Pair<TraceType, TraceCase>> hiddenTypes) {
+    for (TypedTrace trace : myTraces) {
+      trace.setVisible(true);
+    }
+    final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
+    final Set selectedValuesList = new HashSet(myNamesList.getSelectedValuesList());
+    final Object anchorItem = selectedValuesList.isEmpty() ? null : model.get(myNamesList.getAnchorSelectionIndex());
+    final Object leadItem = selectedValuesList.isEmpty() ? null : model.get(myNamesList.getLeadSelectionIndex());
+
+    for (Pair<TraceType, TraceCase> pair : hiddenTypes) {
       for (TypedTrace trace : myTraces) {
-        trace.setVisible(true);
-      }
-      final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
-      final Set selectedValuesList = new HashSet(myNamesList.getSelectedValuesList());
-      final Object anchorItem = selectedValuesList.isEmpty() ? null : model.get(myNamesList.getAnchorSelectionIndex());
-      final Object leadItem = selectedValuesList.isEmpty() ? null : model.get(myNamesList.getLeadSelectionIndex());
-
-      for (Pair<TraceType, TraceCase> pair : hiddenTypes) {
-        for (TypedTrace trace : myTraces) {
-          if (pair.getFirst().equals(trace.getTraceType())
-                  && (TraceCase.unknown.equals(pair.getSecond()) || pair.getSecond().equals(getTrace(trace).getCase()))) {
-            trace.setVisible(false);
-          }
+        if (pair.getFirst().equals(trace.getTraceType())
+                && (TraceCase.unknown.equals(pair.getSecond()) || pair.getSecond().equals(getTrace(trace).getCase()))) {
+          trace.setVisible(false);
         }
       }
-      model.clear();
-      int cnt = 0;
-      final Set<Integer> selected = new HashSet<>();
-      int anchorIdx = -1;
-      int leadIdx = -1;
-      for (TypedTrace trace : myTraces) {
-        if (trace.isVisible()) {
-          model.add(cnt, trace);
-          if (selectedValuesList.contains(trace)) {
-            selected.add(cnt);
-            if (anchorItem.equals(trace)) anchorIdx = cnt;
-            if (leadItem.equals(trace)) leadIdx = cnt;
-          }
-          ++cnt;
+    }
+    model.clear();
+    int cnt = 0;
+    final Set<Integer> selected = new HashSet<>();
+    int anchorIdx = -1;
+    int leadIdx = -1;
+    for (TypedTrace trace : myTraces) {
+      if (trace.isVisible()) {
+        model.add(cnt, trace);
+        if (selectedValuesList.contains(trace)) {
+          selected.add(cnt);
+          if (anchorItem.equals(trace)) anchorIdx = cnt;
+          if (leadItem.equals(trace)) leadIdx = cnt;
         }
+        ++cnt;
       }
+    }
+    if (! selected.isEmpty()) {
       for (Integer idx : selected) {
         myNamesList.addSelectionInterval(idx, idx);
       }
       if (anchorIdx >= 0 && leadIdx >= 0) {
         myNamesList.addSelectionInterval(anchorIdx, leadIdx);
       }
-      myNamesList.revalidate();
-      myNamesList.repaint();
+    } else if (! model.isEmpty()) {
+      myNamesList.addSelectionInterval(0, 0);
     }
+    myNamesList.revalidate();
+    myNamesList.repaint();
   }
 }
