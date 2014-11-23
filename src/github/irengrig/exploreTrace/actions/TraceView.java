@@ -106,7 +106,9 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       public void invokePopup(final Component component, final int x, final int y) {
         ActionPopupMenu popupMenu = ActionManager.getInstance()
                 .createActionPopupMenu(ActionPlaces.UPDATE_POPUP, popupGroup);
-        popupMenu.getComponent().show(component, x, y);
+        final JPopupMenu menu = popupMenu.getComponent();
+        menu.show(component, x, y);
+        menu.requestFocus();
       }
     });
   }
@@ -138,29 +140,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     add(ActionManager.getInstance().createActionToolbar(ActionPlaces.MAIN_TOOLBAR, myDefaultActionGroup, false).getComponent(), BorderLayout.WEST);
     add(mySplitter, BorderLayout.CENTER);
-
-//    addDeleteHandler();
   }
-
-  /*private void addDeleteHandler() {
-    myNamesList.addKeyListener(new KeyAdapter() {
-      @Override
-      public void keyReleased(final KeyEvent e) {
-        final boolean isAltDown = e.isAltDown();
-        final boolean isShiftDown = e.isShiftDown();
-        if (e.getKeyCode() == KeyEvent.VK_DELETE) {
-          if (deleteHandler()) return;
-        } else if (isAltDown && isShiftDown && e.getKeyCode() == KeyEvent.VK_UP) {
-          moveUp();
-          return;
-        } else if (isAltDown && isShiftDown && e.getKeyCode() == KeyEvent.VK_DOWN) {
-          moveDown();
-          return;
-        }
-        super.keyReleased(e);
-      }
-    });
-  }*/
 
   private void moveSomewhere(final Processor<int[]> processor) {
     int[] selectedIndices = myNamesList.getSelectedIndices();
