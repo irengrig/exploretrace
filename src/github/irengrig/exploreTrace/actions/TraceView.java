@@ -766,6 +766,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
         }
       });
       popup.showInBestPositionFor(anActionEvent.getDataContext());
+      popup.getContent().requestFocus();
       //popup.showInFocusCenter();
     }
   }
