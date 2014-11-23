@@ -92,8 +92,20 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   }
 
   private void createActions(final String contentId) {
-    myDefaultActionGroup.add(new MyEditDumpNameAction(contentId));
-    myDefaultActionGroup.add(new MyFilterAction());
+    final AnAction[] popup = {new MyEditDumpNameAction(contentId),
+            new MyKeyUpAction(), new MyKeyDownAction(), new MyFilterAction(), new MyDeleteLineAction()};
+    myDefaultActionGroup.addAll(popup);
+
+    final DefaultActionGroup popupGroup = new DefaultActionGroup();
+    popupGroup.addAll(popup);
+    myNamesList.addMouseListener(new PopupHandler() {
+      @Override
+      public void invokePopup(final Component component, final int x, final int y) {
+        ActionPopupMenu popupMenu = ActionManager.getInstance()
+                .createActionPopupMenu(ActionPlaces.UPDATE_POPUP, popupGroup);
+        popupMenu.getComponent().show(component, x, y);
+      }
+    });
   }
 
   public JBList getNamesList() {
@@ -124,10 +136,10 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     add(ActionManager.getInstance().createActionToolbar(ActionPlaces.MAIN_TOOLBAR, myDefaultActionGroup, false).getComponent(), BorderLayout.WEST);
     add(mySplitter, BorderLayout.CENTER);
 
-    addDeleteHandler();
+//    addDeleteHandler();
   }
 
-  private void addDeleteHandler() {
+  /*private void addDeleteHandler() {
     myNamesList.addKeyListener(new KeyAdapter() {
       @Override
       public void keyReleased(final KeyEvent e) {
@@ -145,7 +157,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
         super.keyReleased(e);
       }
     });
-  }
+  }*/
 
   private void moveSomewhere(final Processor<int[]> processor) {
     int[] selectedIndices = myNamesList.getSelectedIndices();
@@ -674,6 +686,24 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     }
   }
 
+  private class MyDeleteLineAction extends AnAction {
+    public MyDeleteLineAction() {
+      super("Delete", "Delete thread", com.intellij.icons.AllIcons.Actions.GC);
+      registerCustomShortcutSet(new CustomShortcutSet(KeyEvent.VK_DELETE), myNamesList);
+    }
+
+    @Override
+    public void update(@NotNull final AnActionEvent e) {
+      final boolean enabled = myNamesList.getSelectedIndices().length > 0;
+      e.getPresentation().setEnabled(enabled);
+    }
+
+    @Override
+    public void actionPerformed(@NotNull final AnActionEvent anActionEvent) {
+      deleteHandler();
+    }
+  }
+
   private class MyFilterAction extends AnAction {
     public MyFilterAction() {
       super("Show/Hide", "Show/hide threads or categories", AllIcons.General.Filter);
@@ -773,5 +803,63 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     }
     myNamesList.revalidate();
     myNamesList.repaint();
+  }
+
+  private class MyKeyUpAction extends AnAction {
+    public MyKeyUpAction() {
+      super("Move Up", "Move Up", AllIcons.ToolbarDecorator.MoveUp);
+      registerCustomShortcutSet(new CustomShortcutSet(KeyStroke.getKeyStroke(KeyEvent.VK_UP, KeyEvent.ALT_MASK | KeyEvent.SHIFT_MASK)), myNamesList);
+    }
+
+    @Override
+    public void update(@NotNull final AnActionEvent e) {
+      e.getPresentation().setEnabled(false);
+      moveSomewhere(new Processor<int[]>() {
+        @Override
+        public boolean process(final int[] ints) {
+          for (int anInt : ints) {
+            if (anInt == 0) {
+              return false;
+            }
+          }
+          e.getPresentation().setEnabled(true);
+          return false;
+        }
+      });
+    }
+
+    @Override
+    public void actionPerformed(@NotNull final AnActionEvent anActionEvent) {
+      moveUp();
+    }
+  }
+
+  private class MyKeyDownAction extends AnAction {
+    public MyKeyDownAction() {
+      super("Move Down", "Move Down", AllIcons.ToolbarDecorator.MoveDown);
+      registerCustomShortcutSet(new CustomShortcutSet(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, KeyEvent.ALT_MASK | KeyEvent.SHIFT_MASK)), myNamesList);
+    }
+
+    @Override
+    public void update(@NotNull final AnActionEvent e) {
+      e.getPresentation().setEnabled(false);
+      moveSomewhere(new Processor<int[]>() {
+        @Override
+        public boolean process(final int[] ints) {
+          for (int anInt : ints) {
+            if (anInt == (myNamesList.getItemsCount() - 1)) {
+              return false;
+            }
+          }
+          e.getPresentation().setEnabled(true);
+          return false;
+        }
+      });
+    }
+
+    @Override
+    public void actionPerformed(@NotNull final AnActionEvent anActionEvent) {
+      moveDown();
+    }
   }
 }
