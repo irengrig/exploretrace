@@ -43,11 +43,23 @@ public class TracesSimilarChecker {
   }
 
   private static String replaceRef(final String in) {
+    //on java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject@2a4dac22
     if (in == null) return null;
     final int start = in.indexOf("<0x");
-    if (start == -1) return in;
-    final int end = in.indexOf('>', start + 1);
-    if (end == -1 || (end == in.length() - 1)) return in;
-    return in.substring(0, start) + in.substring(end + 1);
+    if (start != -1) {
+      final int end = in.indexOf('>', start + 1);
+      if (end == -1 || (end == in.length() - 1)) return in;
+      return in.substring(0, start) + in.substring(end + 1);
+    }
+    final int startAt = in.indexOf("@");
+    if (startAt == -1) return in;
+    final int end = in.indexOf(' ', startAt + 1);
+    final String numStr = in.substring(startAt + 1, end == -1 ? in.length() : end);
+    try {
+      Integer.parseInt(numStr, 16);
+      return in.substring(0, startAt) + ((end == -1) ? "" : in.substring(end + 1));
+    } catch (NumberFormatException e) {
+      return in;
+    }
   }
 }
