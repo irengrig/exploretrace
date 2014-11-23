@@ -4,9 +4,7 @@ import com.intellij.openapi.util.text.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -40,18 +38,29 @@ public class TraceReader {
   public void read(@NotNull final InputStream is) throws IOException {
     final LineNumberReader reader = new LineNumberReader(new InputStreamReader(is));
 
+    final Set<String> possiblePrefix = new HashSet<>();
     for (;;) {
-      final String line = reader.readLine();
+      String line = reader.readLine();
       if (line == null) break;  // eof possibly
-      // todo debug ?
-      boolean eaten = false;
-      for (BaseParser parser : myParsers) {
-        if (parser.eatLine(line)) {
-          eaten = true;
-          break;
+      while (line.trim().startsWith(">")) {
+        line = line.substring(1);
+      }
+      for (String pre : possiblePrefix) {
+        if (line.startsWith(pre)) {
+          line = line.substring(pre.length());
         }
       }
+      boolean eaten = tryParse(line);
       if (! eaten && ! StringUtil.isEmptyOrSpaces(line)) {
+        int idx = line.indexOf("\"");
+        if (idx == -1) {
+          idx = line.indexOf("at ");
+        }
+        if (idx >= 0) {
+          possiblePrefix.add(line.substring(0, idx));
+          line = line.substring(idx);
+          tryParse(line);
+        }
         // todo debug
 //        System.out.println("Problem! " + line);
       }
@@ -59,6 +68,17 @@ public class TraceReader {
     for (BaseParser parser : myParsers) {
       parser.finish();
     }
+  }
+
+  private boolean tryParse(final String line) {
+    boolean eaten = false;
+    for (BaseParser parser : myParsers) {
+      if (parser.eatLine(line)) {
+        eaten = true;
+        break;
+      }
+    }
+    return eaten;
   }
 
   public String getHeader() {
@@ -152,7 +172,7 @@ public class TraceReader {
     @Override
     protected boolean eatLineImpl(String line) {
       if (myIsInside) {
-        if (line.trim().startsWith("\"")) {
+        if (line.trim().startsWith("\"") || line.contains("prio=") || line.contains("tid=")) {
           myIsInside = false;
           flushBufferIntoTrace();
 //          return false;
