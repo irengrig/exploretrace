@@ -36,7 +36,7 @@
   <actions>
     <action class="github.irengrig.exploreTrace.actions.ShowTraceViewAction" id="ExploreTrace.Show">
         <add-to-group group-id="AnalyzeMenu" anchor="last"/>
-        <add-to-group group-id="AnalyzePlatformMenu" anchor="last"/>
+<!--        <add-to-group group-id="AnalyzePlatformMenu" anchor="last"/> -->
     </action>
   </actions>
 
