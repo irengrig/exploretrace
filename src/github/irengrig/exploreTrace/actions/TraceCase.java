@@ -5,6 +5,7 @@ import com.intellij.ui.LayeredIcon;
 import github.irengrig.exploreTrace.JvmSystemThreadChecker;
 import github.irengrig.exploreTrace.Trace;
 import org.jetbrains.annotations.NonNls;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 
@@ -19,23 +20,31 @@ import static com.intellij.icons.AllIcons.Debugger.ThreadStates.*;
  * Created by ira on 21.10.2014.
  */
 public enum TraceCase {
-    runnable(Running),
-    blocked(Locked),
-    paused(Paused),
-    pausedTimed(Paused),
-    edtBusy(EdtBusy),
-    edtIdle(Idle),
-    socket(Socket),
-    io(IO),
-    waitingProcess(AllIcons.RunConfigurations.Application),
-    unknown(AllIcons.Debugger.KillProcess);
+    runnable(Running, null),
+    blocked(Locked, null),
+    paused(Paused, null),
+    pausedTimed(Paused, null),
+    edtBusy(EdtBusy, null),
+    edtIdle(Idle, null),
+    socket(Socket, "Socket"),
+    io(IO, "I/O"),
+    waitingProcess(AllIcons.RunConfigurations.Application, "Waiting for process"),
+    unknown(AllIcons.Debugger.KillProcess, null);
 
     private final Icon myIcon;
     private final Icon myDaemonIcon;
+    @Nullable
+    private final String myClarifier;
 
-    TraceCase(final Icon icon) {
+    TraceCase(final Icon icon, final String clarifier) {
         myIcon = icon;
+        myClarifier = clarifier;
         myDaemonIcon = new LayeredIcon(icon, Daemon_sign);
+    }
+
+    @Nullable
+    public String getClarifier() {
+        return myClarifier;
     }
 
     public Icon getIcon() {

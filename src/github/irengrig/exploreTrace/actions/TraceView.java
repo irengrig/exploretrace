@@ -389,13 +389,13 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       if (value instanceof TypedTrace) {
         final TraceType traceType = ((TypedTrace) value).getTraceType();
         if (TraceType.edt.equals(traceType)) {
-          append("[EDT] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
+          printClass("EDT");
           final Trace t = (Trace) ((TypedTrace) value).getT();
           setIcon(t.getCase().getIcon(t.isDaemon()));
           append(t.getThreadName(), SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES);
           printState(t);
         } else if (TraceType.jdk.equals(traceType)) {
-          append("[JDK] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
+          printClass("JDK");
           final Trace t = (Trace) ((TypedTrace) value).getT();
           setIcon(t.getCase().getIcon(t.isDaemon()));
           printTrace(t);
@@ -409,15 +409,23 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
         if (TraceType.single.equals(traceType)) {
           final Trace t = (Trace) ((TypedTrace) value).getT();
           setIcon(t.getCase().getIcon(t.isDaemon()));
+          final String clarifier = t.getCase().getClarifier();
+          if (clarifier != null) {
+            printClass(clarifier);
+          }
           printTrace(t);
         }
       }
     }
 
+    private void printClass(@NotNull final String name) {
+      append("[" + name + "] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
+    }
+
     private void printPool(final String name, final TracesClassifier.PoolDescriptor d) {
       final Trace trace = d.getTypicalTrace();
       setIcon(trace.getCase().getIcon(trace.isDaemon()));
-      append("[" + name + ": " + d.getNumber() + "] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
+      printClass(name + ": " + d.getNumber());
       append(d.getTemplateName());
       printState(trace);
     }
