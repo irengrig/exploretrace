@@ -594,6 +594,8 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     private final JPanel myPanel;
     private final JBCheckBox myIo;
     private final JBCheckBox myProcess;
+    private final JBCheckBox myWaiting;
+    private final JBCheckBox myTimedWaiting;
     private Runnable myOnOk;
     private final JButton myOk;
 
@@ -604,6 +606,9 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       mySocket = new JBCheckBox("Socket operation");
       myIo = new JBCheckBox("I/O operation");
       myProcess = new JBCheckBox("Waiting for process");
+
+      myWaiting = new JBCheckBox("Waiting");
+      myTimedWaiting = new JBCheckBox("Timed waiting");
 //      mySimilar = new JBCheckBox("Similar");
 
       myOk = new JButton("Apply");
@@ -620,12 +625,12 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
               .addComponent(mySocket)
               .addComponent(myIo)
               .addComponent(myProcess)
+              .addComponent(myWaiting)
+              .addComponent(myTimedWaiting)
               .addComponent(myPools)
               .addComponent(myJdk)
               .addComponent(disabledCheckBox("Runnable"))
               .addComponent(disabledCheckBox("Blocked"))
-              .addComponent(disabledCheckBox("Waiting"))
-              .addComponent(disabledCheckBox("Timed waiting"))
 //              .addComponent(mySimilar)
               .addLabeledComponent("", wrapper);
       myPanel = builder.getPanel();
@@ -669,6 +674,8 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       mySocket.setSelected(! hidden.contains(Pair.create(TraceType.single, TraceCase.socket)));
       myIo.setSelected(! hidden.contains(Pair.create(TraceType.single, TraceCase.io)));
       myProcess.setSelected(! hidden.contains(Pair.create(TraceType.single, TraceCase.waitingProcess)));
+      myWaiting.setSelected(! hidden.contains(Pair.create(TraceType.single, TraceCase.paused)));
+      myTimedWaiting.setSelected(! hidden.contains(Pair.create(TraceType.single, TraceCase.pausedTimed)));
     }
 
     public Set<Pair<TraceType, TraceCase>> getHiddenTypes() {
@@ -678,6 +685,14 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       if (! mySocket.isSelected()) set.add(Pair.create(TraceType.single, TraceCase.socket));
       if (! myIo.isSelected()) set.add(Pair.create(TraceType.single, TraceCase.io));
       if (! myProcess.isSelected()) set.add(Pair.create(TraceType.single, TraceCase.waitingProcess));
+      if (! myWaiting.isSelected()) {
+        set.add(Pair.create(TraceType.single, TraceCase.paused));
+        set.add(Pair.create(TraceType.similar, TraceCase.paused));
+      }
+      if (! myTimedWaiting.isSelected()) {
+        set.add(Pair.create(TraceType.single, TraceCase.pausedTimed));
+        set.add(Pair.create(TraceType.similar, TraceCase.pausedTimed));
+      }
 //      if (! mySimilar.isSelected()) set.add(Pair.create(TraceType.similar, TraceCase.unknown));
       return set;
     }
