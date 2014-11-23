@@ -80,6 +80,9 @@ public enum TraceCase {
                 return runnable;
             }
         } else if (Thread.State.WAITING.equals(state)) {
+            if (isWaitingForProcess(trace)) {
+                return waitingProcess;
+            }
             return paused;
         } else if (Thread.State.TIMED_WAITING.equals(state)) {
             return pausedTimed;
@@ -123,14 +126,18 @@ public enum TraceCase {
         return false;
     }
 
+    private final static Set<String> WAITING_FOR_PROCESS_PATTERNS = new HashSet<>();
+    static {
+        WAITING_FOR_PROCESS_PATTERNS.add("at java.lang.ProcessImpl.waitFor(");
+        WAITING_FOR_PROCESS_PATTERNS.add("at java.lang.UNIXProcess.waitFor(UNIXProcess.java");
+        WAITING_FOR_PROCESS_PATTERNS.add("at java.lang.UNIXProcess.waitForProcessExit(Native Method)");
+    }
     private static boolean isWaitingForProcess(final Trace trace) {
         final List<String> list = trace.getTrace();
         for (String aList : list) {
             final String trim = aList.trim();
-            if (trim.startsWith("at java.lang.ProcessImpl.waitFor(")) {
-                return true;
-            } else if (trim.startsWith("at java.lang.UNIXProcess.waitForProcessExit(Native Method)")) {
-                return true;
+            for (String waitingForProcessPattern : WAITING_FOR_PROCESS_PATTERNS) {
+                if (trim.startsWith(waitingForProcessPattern)) return true;
             }
         }
         return false;
