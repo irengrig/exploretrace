@@ -2,6 +2,7 @@ package github.irengrig.exploreTrace;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,12 +14,22 @@ public class PoolDescriptor {
   private final Trace myTypicalTrace;
   private final List<String> myNames;
   private final List<String> myPresentations;
+  private final List<Trace> myOtherTraces;
 
   public PoolDescriptor(@NotNull final Trace typicalTrace, @NotNull final List<String> names,
                         @NotNull final List<String> presentations) {
     myTypicalTrace = typicalTrace;
     myNames = names;
-      myPresentations = presentations;
+    myPresentations = presentations;
+    myOtherTraces = new ArrayList<>();
+  }
+
+  public void addTrace(@NotNull final Trace trace) {
+    myOtherTraces.add(trace);
+  }
+
+  public List<Trace> getOtherTraces() {
+    return myOtherTraces;
   }
 
   public List<String> getNames() {

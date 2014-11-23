@@ -95,8 +95,13 @@ public class TracesClassifier {
     String poolName = commonStart(names);
     // todo invent another way
     poolName = poolName == null ? names.get(0) : poolName;
-    final Trace first = traces.iterator().next();
+    final Iterator<Trace> iterator = traces.iterator();
+    final Trace first = iterator.next();
     final PoolDescriptor descriptor = new PoolDescriptor(first, names, presentations);
+    while (iterator.hasNext()) {
+      final Trace next = iterator.next();
+      descriptor.addTrace(next);
+    }
     descriptor.setNumber(traces.size());
     descriptor.setTemplateName(poolName);
     return descriptor;

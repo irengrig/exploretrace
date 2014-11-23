@@ -7,6 +7,7 @@ import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.*;
+import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.InputValidator;
 import com.intellij.openapi.ui.Messages;
@@ -26,8 +27,12 @@ import com.intellij.ui.popup.PopupFactoryImpl;
 import com.intellij.util.BooleanFunction;
 import com.intellij.util.Processor;
 import com.intellij.util.ui.FormBuilder;
+import com.intellij.util.ui.TextTransferable;
+import com.intellij.util.ui.UIUtil;
 import github.irengrig.exploreTrace.PoolDescriptor;
 import github.irengrig.exploreTrace.Trace;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.DataFormat;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -36,6 +41,8 @@ import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import java.awt.*;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
@@ -97,6 +104,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
             new MyKeyUpAction(), new MyKeyDownAction(), new MyFilterAction(),
             new MyMarkAction(),
             new MyShowPoolThreads(),
+            new ExportIntoText(),
             new MyDeleteLineAction()};
     myDefaultActionGroup.addAll(popup);
 
@@ -950,6 +958,52 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
           myMarked.add(o);
         }
       }
+    }
+  }
+
+  // todo header, footer?
+  private class ExportIntoText extends AnAction {
+    public ExportIntoText() {
+      super("Copy Dump To Clipboard", "Copy Dump To Clipboard", AllIcons.Actions.Export);
+    }
+
+    @Override
+    public void actionPerformed(@NotNull final AnActionEvent anActionEvent) {
+      final StringBuilder sb = new StringBuilder();
+      final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
+      for (int i = 0; i < model.size(); i++) {
+        final TypedTrace typed = (TypedTrace) model.get(i);
+        if (! TraceType.pool.equals(typed.getTraceType()) && ! TraceType.similar.equals(typed.getTraceType())) {
+          printTrace(sb, (Trace) typed.getT());
+        } else {
+          final PoolDescriptor poolDescriptor = (PoolDescriptor) typed.getT();
+          printTrace(sb, poolDescriptor.getTypicalTrace());
+          for (Trace trace : poolDescriptor.getOtherTraces()) {
+            printTrace(sb, trace);
+          }
+        }
+      }
+      final Transferable content = new StringSelection(sb.toString());
+      UIUtil.invokeLaterIfNeeded(new Runnable() {
+        @Override
+        public void run() {
+          CopyPasteManager.getInstance().setContents(content);
+        }
+      });
+    }
+
+    private void printTrace(@NotNull final StringBuilder sb, @NotNull final Trace trace) {
+      sb.append(trace.getFirstLine()).append("\n");
+      if (trace.getStateWords() != null) {
+        sb.append("   java.lang.Thread.State: ");
+        sb.append(trace.getStateWords());
+        sb.append("\n");
+      }
+
+      for (String s : trace.getTrace()) {
+        sb.append("        ").append(s).append("\n");
+      }
+      sb.append("\n");
     }
   }
 }
