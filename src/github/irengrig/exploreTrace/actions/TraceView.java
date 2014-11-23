@@ -12,6 +12,7 @@ import com.intellij.openapi.ui.InputValidator;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.ui.popup.*;
+import com.intellij.openapi.ui.popup.util.BaseListPopupStep;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.wm.ToolWindow;
@@ -93,7 +94,9 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
   private void createActions(final String contentId) {
     final AnAction[] popup = {new MyEditDumpNameAction(contentId),
-            new MyKeyUpAction(), new MyKeyDownAction(), new MyFilterAction(), new MyDeleteLineAction()};
+            new MyKeyUpAction(), new MyKeyDownAction(), new MyFilterAction(),
+            new MyShowPoolThreads(),
+            new MyDeleteLineAction()};
     myDefaultActionGroup.addAll(popup);
 
     final DefaultActionGroup popupGroup = new DefaultActionGroup();
@@ -860,6 +863,38 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     @Override
     public void actionPerformed(@NotNull final AnActionEvent anActionEvent) {
       moveDown();
+    }
+  }
+
+  private class MyShowPoolThreads extends AnAction {
+    public MyShowPoolThreads() {
+      super("Show Threads Inside", "Show grouped threads", AllIcons.Actions.Preview);
+    }
+
+    @Override
+    public void update(@NotNull final AnActionEvent e) {
+      final TypedTrace trace = getSingleTrace();
+      e.getPresentation().setEnabled(trace != null &&
+              (TraceType.pool.equals(trace.getTraceType()) || TraceType.similar.equals(trace.getTraceType())));
+    }
+
+    private TypedTrace getSingleTrace() {
+      final int[] selectedIndices = myNamesList.getSelectedIndices();
+      if (selectedIndices.length != 1) {
+        return null;
+      }
+      final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
+      return (TypedTrace) model.get(selectedIndices[0]);
+    }
+
+    @Override
+    public void actionPerformed(@NotNull final AnActionEvent anActionEvent) {
+      final TypedTrace trace = getSingleTrace();
+      if (trace == null) return;
+      final TracesClassifier.PoolDescriptor descriptor = (TracesClassifier.PoolDescriptor) trace.getT();
+      final List<String> names = descriptor.getNames();
+      final ListPopup listPopup = JBPopupFactory.getInstance().createListPopup(new BaseListPopupStep<String>("Threads inside " + descriptor.getTemplateName(), names));
+      listPopup.showInFocusCenter();
     }
   }
 }
