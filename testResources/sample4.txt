@@ -1,0 +1,31 @@
+>"JobScheduler FJ pool 0/12" prio=0 tid=0x0 nid=0x0 waiting on condition
+>                       java.lang.Thread.State: TIMED_WAITING
+>   on jsr166e.ForkJoinPool@1b2db01f
+>
+>   at sun.misc.Unsafe.park(Native Method)
+>    at jsr166e.ForkJoinPool.awaitWork(ForkJoinPool.java:1756)
+>   at jsr166e.ForkJoinPool.scan(ForkJoinPool.java:1694)
+>    at jsr166e.ForkJoinPool.runWorker(ForkJoinPool.java:1642)
+> >>> > >> at jsr166e.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:109)
+>
+
+"JobScheduler FJ pool 0/12" prio=0 tid=0x0 nid=0x0 waiting on condition
+     java.lang.Thread.State: TIMED_WAITING
+                        on jsr166e.ForkJoinPool@1b2db01f
+
+          at sun.misc.Unsafe.park(Native Method)
+    at jsr166e.ForkJoinPool.awaitWork(ForkJoinPool.java:1756)
+  at jsr166e.ForkJoinPool.scan(ForkJoinPool.java:1694)
+ at jsr166e.ForkJoinPool.runWorker(ForkJoinPool.java:1642)
+ at jsr166e.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:109)
+
+IC> BR> "JDI Target VM Interface" prio=0 tid=0x0 nid=0x0 runnable
+IC> BR>      java.lang.Thread.State: RUNNABLE
+IC> BR>  (in native)
+IC> BR>  at java.net.SocketInputStream.socketRead0(Native Method)
+IC> BR>  at java.net.SocketInputStream.read(SocketInputStream.java:150)
+IC> BR>  at java.net.SocketInputStream.read(SocketInputStream.java:121)
+IC> BR>  at java.net.SocketInputStream.read(SocketInputStream.java:203)
+IC> BR>  at com.sun.tools.jdi.SocketConnection.readPacket(SocketTransportService.java:411)
+IC> BR>  at com.sun.tools.jdi.TargetVM.run(TargetVM.java:118)
+IC> BR>  at java.lang.Thread.run(Thread.java:745)
