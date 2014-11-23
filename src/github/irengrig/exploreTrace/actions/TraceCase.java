@@ -98,7 +98,9 @@ public enum TraceCase {
         final Set<String> set = new HashSet<>();
         addToSocketPattern(set, "PlainSocketImpl.socketAccept(PlainSocketImpl.java:");
         addToSocketPattern(set, "PlainDatagramSocketImpl.receive(PlainDatagramSocketImpl.java:");
+        addToSocketPattern(set, "PlainDatagramSocketImpl.receive0(Native Method");
         addToSocketPattern(set, "SocketInputStream.socketRead(SocketInputStream.java");
+        addToSocketPattern(set, "SocketInputStream.read(SocketInputStream.java");
         addToSocketPattern(set, "PlainSocketImpl.socketConnect(PlainSocketImpl.java");
         addToSocketPattern(set, "ServerSocket.accept(ServerSocket.java");
         SOCKET_PATTERNS = Collections.unmodifiableSet(set);
@@ -109,9 +111,8 @@ public enum TraceCase {
     }
     private static boolean isSocket(final Trace trace) {
         final List<String> list = trace.getTrace();
-        // nothing interesting in first 2 lines
-        for (int i = 2; i < list.size(); i++) {
-            final String trim = list.get(i).trim();
+        for (String aList : list) {
+            final String trim = aList.trim();
             if (trim.startsWith(SOCKET_GENERIC_PATTERN)) {
                 final String substring = trim.substring(SOCKET_GENERIC_PATTERN.length(), Math.min(SOCKET_GENERIC_PATTERN.length() + socketPattenLen, trim.length()));
                 if (SOCKET_PATTERNS.contains(substring)) {
@@ -124,10 +125,11 @@ public enum TraceCase {
 
     private static boolean isWaitingForProcess(final Trace trace) {
         final List<String> list = trace.getTrace();
-        // nothing interesting in first 2 lines
-        for (int i = 2; i < list.size(); i++) {
-            final String trim = list.get(i).trim();
+        for (String aList : list) {
+            final String trim = aList.trim();
             if (trim.startsWith("at java.lang.ProcessImpl.waitFor(")) {
+                return true;
+            } else if (trim.startsWith("at java.lang.UNIXProcess.waitForProcessExit(Native Method)")) {
                 return true;
             }
         }
@@ -145,9 +147,8 @@ public enum TraceCase {
     }
     private static boolean isIOOperation(final Trace trace) {
         final List<String> list = trace.getTrace();
-        // nothing interesting in first 2 lines
-        for (int i = 2; i < list.size(); i++) {
-            final String trim = list.get(i).trim();
+        for (String aList : list) {
+            final String trim = aList.trim();
             if (trim.startsWith("at ")) {
                 int idxBrace = trim.indexOf("(");
                 if (idxBrace > 0 && IO_PATTERNS.contains(trim.substring(3, idxBrace + 1))) {
