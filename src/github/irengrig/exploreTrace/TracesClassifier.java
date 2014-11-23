@@ -86,15 +86,17 @@ public class TracesClassifier {
   }
 
   private PoolDescriptor groupThreads(final Collection<Trace> traces) {
-    final List<String> names = new ArrayList<>();
+    final List<String> names = new ArrayList<>(traces.size());
+    final List<String> presentations = new ArrayList<>(traces.size());
     for (Trace trace : traces) {
       names.add(trace.getThreadName());
+      presentations.add(trace.getFirstLine());
     }
     String poolName = commonStart(names);
     // todo invent another way
     poolName = poolName == null ? names.get(0) : poolName;
     final Trace first = traces.iterator().next();
-    final PoolDescriptor descriptor = new PoolDescriptor(first, names);
+    final PoolDescriptor descriptor = new PoolDescriptor(first, names, presentations);
     descriptor.setNumber(traces.size());
     descriptor.setTemplateName(poolName);
     return descriptor;
@@ -130,42 +132,6 @@ public class TracesClassifier {
       if (candidate.isEmpty()) return null;
     }
     return candidate;
-  }
-
-  public static class PoolDescriptor {
-    private String myTemplateName;
-    private int myNumber;
-    private final Trace myTypicalTrace;
-    private final List<String> myNames;
-
-    public PoolDescriptor(final Trace typicalTrace, final List<String> names) {
-      myTypicalTrace = typicalTrace;
-      myNames = names;
-    }
-
-    public List<String> getNames() {
-      return myNames;
-    }
-
-    public String getTemplateName() {
-      return myTemplateName;
-    }
-
-    public void setTemplateName(final String templateName) {
-      myTemplateName = templateName;
-    }
-
-    public int getNumber() {
-      return myNumber;
-    }
-
-    public void setNumber(final int number) {
-      myNumber = number;
-    }
-
-    public Trace getTypicalTrace() {
-      return myTypicalTrace;
-    }
   }
 
   public List<Trace> getJdkThreads() {

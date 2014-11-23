@@ -19,7 +19,6 @@ import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.*;
 import com.intellij.ui.components.JBCheckBox;
-import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentManager;
@@ -27,9 +26,8 @@ import com.intellij.ui.popup.PopupFactoryImpl;
 import com.intellij.util.BooleanFunction;
 import com.intellij.util.Processor;
 import com.intellij.util.ui.FormBuilder;
-import com.intellij.util.ui.UIUtil;
+import github.irengrig.exploreTrace.PoolDescriptor;
 import github.irengrig.exploreTrace.Trace;
-import github.irengrig.exploreTrace.TracesClassifier;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -51,8 +49,8 @@ import java.util.List;
 public class TraceView extends JPanel implements TypeSafeDataProvider {
   private final Project myProject;
   private final List<Trace> myNotGrouped;
-  private final List<TracesClassifier.PoolDescriptor> myPools;
-  private final List<TracesClassifier.PoolDescriptor> mySimilar;
+  private final List<PoolDescriptor> myPools;
+  private final List<PoolDescriptor> mySimilar;
   private final List<Trace> myJdkThreads;
   private final Trace myEdtTrace;
   private final DefaultActionGroup myDefaultActionGroup;
@@ -66,7 +64,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private List<TypedTrace> myTraces;
 
   public TraceView(final Project project, final List<Trace> notGrouped,
-                   final List<TracesClassifier.PoolDescriptor> pools, final List<TracesClassifier.PoolDescriptor> similar,
+                   final List<PoolDescriptor> pools, final List<PoolDescriptor> similar,
                    final List<Trace> jdkThreads, final Trace edtTrace, DefaultActionGroup defaultActionGroup, final String contentId) {
     super(new BorderLayout());
     myProject = project;
@@ -332,7 +330,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     if (! TraceType.pool.equals(typedTrace.getTraceType()) && ! TraceType.similar.equals(typedTrace.getTraceType())) {
       return (Trace) typedTrace.getT();
     } else {
-      return ((TracesClassifier.PoolDescriptor) typedTrace.getT()).getTypicalTrace();
+      return ((PoolDescriptor) typedTrace.getT()).getTypicalTrace();
     }
   }
 
@@ -348,10 +346,10 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     if (myEdtTrace != null) {
       myTraces.add(new TypedTrace<>(++cnt, TraceType.edt, myEdtTrace));
     }
-    for (TracesClassifier.PoolDescriptor pool : mySimilar) {
+    for (PoolDescriptor pool : mySimilar) {
       myTraces.add(new TypedTrace<>(++cnt, TraceType.similar, pool));
     }
-    for (TracesClassifier.PoolDescriptor pool : myPools) {
+    for (PoolDescriptor pool : myPools) {
       myTraces.add(new TypedTrace<>(++cnt, TraceType.pool, pool));
     }
     for (Trace trace : myJdkThreads) {
@@ -396,10 +394,10 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
           printTrace(t);
         }
         if (TraceType.pool.equals(traceType)) {
-          printPool("POOL", (TracesClassifier.PoolDescriptor) ((TypedTrace) value).getT());
+          printPool("POOL", (PoolDescriptor) ((TypedTrace) value).getT());
         }
         if (TraceType.similar.equals(traceType)) {
-          printPool("SIMILAR", (TracesClassifier.PoolDescriptor) ((TypedTrace) value).getT());
+          printPool("SIMILAR", (PoolDescriptor) ((TypedTrace) value).getT());
         }
         if (TraceType.single.equals(traceType)) {
           final Trace t = (Trace) ((TypedTrace) value).getT();
@@ -417,7 +415,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       append("[" + name + "] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
     }
 
-    private void printPool(final String name, final TracesClassifier.PoolDescriptor d) {
+    private void printPool(final String name, final PoolDescriptor d) {
       final Trace trace = d.getTypicalTrace();
       setIcon(trace.getCase().getIcon(trace.isDaemon()));
       printClass(name + ": " + d.getNumber());
@@ -871,9 +869,10 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     public void actionPerformed(@NotNull final AnActionEvent anActionEvent) {
       final TypedTrace trace = getSingleTrace();
       if (trace == null) return;
-      final TracesClassifier.PoolDescriptor descriptor = (TracesClassifier.PoolDescriptor) trace.getT();
-      final List<String> names = descriptor.getNames();
-      final ListPopup listPopup = JBPopupFactory.getInstance().createListPopup(new BaseListPopupStep<String>("Threads inside " + descriptor.getTemplateName(), names));
+      final PoolDescriptor descriptor = (PoolDescriptor) trace.getT();
+      final List<String> names = descriptor.getPresentations();
+      final ListPopup listPopup = JBPopupFactory.getInstance().createListPopup(
+              new BaseListPopupStep<String>("Threads inside '" + descriptor.getTemplateName() + "'", names));
       listPopup.showInFocusCenter();
     }
   }
