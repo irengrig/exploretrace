@@ -58,6 +58,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private Splitter mySplitter;
   private ConsoleView myConsole;
   private Set<Pair<TraceType, TraceCase>> myCurrentFilter;
+  private final Set<Object> myMarked;
 
   @NonNls
   private static final String SOCKET_GENERIC_PATTERN = "at java.net.";
@@ -68,6 +69,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
                    final List<Trace> jdkThreads, final Trace edtTrace, DefaultActionGroup defaultActionGroup, final String contentId) {
     super(new BorderLayout());
     myProject = project;
+    myMarked = new HashSet<>();
     myNotGrouped = notGrouped;
     myPools = pools;
     mySimilar = similar;
@@ -93,6 +95,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   private void createActions(final String contentId) {
     final AnAction[] popup = {new MyEditDumpNameAction(contentId),
             new MyKeyUpAction(), new MyKeyDownAction(), new MyFilterAction(),
+            new MyMarkAction(),
             new MyShowPoolThreads(),
             new MyDeleteLineAction()};
     myDefaultActionGroup.addAll(popup);
@@ -123,7 +126,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     myNamesList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
     fillNamesList();
-    myNamesList.setCellRenderer(new MyNameListCellRenderer());
+    myNamesList.setCellRenderer(new MyNameListCellRenderer(myMarked));
     myNamesList.addListSelectionListener(new ListSelectionListener() {
       @Override
       public void valueChanged(final ListSelectionEvent e) {
@@ -377,9 +380,22 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
   }
 
   private static class MyNameListCellRenderer extends ColoredListCellRenderer {
+    private Set<Object> myMarked;
+    private Color mySelectedMarked;
+    private Color myMarkedColor;
+
+    public MyNameListCellRenderer(final Set<Object> marked) {
+      myMarked = marked;
+      mySelectedMarked = new Color(0xB1C5FF);
+      myMarkedColor = Color.orange;
+    }
+
     @Override
-    protected void customizeCellRenderer(final JList jList, final Object value, final int i, final boolean b, final boolean b1) {
+    protected void customizeCellRenderer(final JList jList, final Object value, int index, boolean selected, boolean hasFocus) {
       if (value instanceof TypedTrace) {
+        if (myMarked.contains(value)) {
+          setBackground(selected ? mySelectedMarked : myMarkedColor);
+        }
         final TraceType traceType = ((TypedTrace) value).getTraceType();
         if (TraceType.edt.equals(traceType)) {
           printClass("EDT");
@@ -874,6 +890,50 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       final ListPopup listPopup = JBPopupFactory.getInstance().createListPopup(
               new BaseListPopupStep<String>("Threads inside '" + descriptor.getTemplateName() + "'", names));
       listPopup.showInFocusCenter();
+    }
+  }
+
+  private class MyMarkAction extends AnAction {
+
+    private static final String MARK = "Mark";
+
+    public MyMarkAction() {
+      super(MARK, MARK, AllIcons.Ide.Rating);
+      registerCustomShortcutSet(new CustomShortcutSet(KeyEvent.VK_SPACE), myNamesList);
+    }
+
+    @Override
+    public void update(@NotNull final AnActionEvent e) {
+      final Presentation presentation = e.getPresentation();
+      presentation.setEnabled(false);
+      presentation.setText(MARK);
+      presentation.setDescription(MARK);
+      final int[] selectedIndices = myNamesList.getSelectedIndices();
+      if (selectedIndices.length != 1) {
+        return;
+      }
+      presentation.setEnabled(true);
+      final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
+      final Object o = model.get(selectedIndices[0]);
+      final String text = myMarked.contains(o) ? "Clear Mark" : MARK;
+      presentation.setText(text);
+      presentation.setDescription(text);
+    }
+
+    @Override
+    public void actionPerformed(@NotNull final AnActionEvent anActionEvent) {
+      final int[] selectedIndices = myNamesList.getSelectedIndices();
+      if (selectedIndices.length != 1) {
+        return;
+      }
+
+      final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
+      for (int selectedIndice : selectedIndices) {
+        final Object o = model.get(selectedIndice);
+        if (! myMarked.remove(o)) {
+          myMarked.add(o);
+        }
+      }
     }
   }
 }
