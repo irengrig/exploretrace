@@ -388,7 +388,13 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     protected void customizeCellRenderer(final JList jList, final Object value, final int i, final boolean b, final boolean b1) {
       if (value instanceof TypedTrace) {
         final TraceType traceType = ((TypedTrace) value).getTraceType();
-        if (TraceType.jdk.equals(traceType) || TraceType.edt.equals(traceType)) {
+        if (TraceType.edt.equals(traceType)) {
+          append("[EDT] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
+          final Trace t = (Trace) ((TypedTrace) value).getT();
+          setIcon(t.getCase().getIcon(t.isDaemon()));
+          append(t.getThreadName(), SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES);
+          printState(t);
+        } else if (TraceType.jdk.equals(traceType)) {
           append("[JDK] ", SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
           final Trace t = (Trace) ((TypedTrace) value).getT();
           setIcon(t.getCase().getIcon(t.isDaemon()));
