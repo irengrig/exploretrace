@@ -1,7 +1,7 @@
 <idea-plugin version="2">
   <id>ExploreTrace</id>
   <name>Explore Trace</name>
-  <version>0.1</version>
+  <version>0.1.1</version>
   <vendor email="Irina.Chernushina@jetbrains.com" url="https://www.github.com/irengrig/exploretrace">Irina Chernushina</vendor>
 
   <description><![CDATA[
