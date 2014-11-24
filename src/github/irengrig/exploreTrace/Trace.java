@@ -117,7 +117,7 @@ public class Trace {
     private boolean myIsDaemon = false;
     @Nullable
     private String myIdentifier;
-    private List<String> myTrace = new ArrayList<>();
+    private List<String> myTrace = new ArrayList<String>();
     @Nullable
     private String myHeader;
 

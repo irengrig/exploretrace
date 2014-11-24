@@ -25,7 +25,7 @@ public class MultiClassesHyperlinkInfo implements HyperlinkInfo {
 
     public MultiClassesHyperlinkInfo(final List<Pair<PsiClass, VirtualFile>> psiMethods, final int line) {
         myLine = line;
-        myPsiMethods = new ArrayList<>(psiMethods);
+        myPsiMethods = new ArrayList<Pair<PsiClass, VirtualFile>>(psiMethods);
         Collections.sort(myPsiMethods, new Comparator<Pair<PsiClass, VirtualFile>>() {
             @Override
             public int compare(final Pair<PsiClass, VirtualFile> o1, final Pair<PsiClass, VirtualFile> o2) {
@@ -36,7 +36,7 @@ public class MultiClassesHyperlinkInfo implements HyperlinkInfo {
 
     @Override
     public void navigate(final Project project) {
-        final List<Pair<PsiClass, VirtualFile>> m = new ArrayList<>(myPsiMethods.size());
+        final List<Pair<PsiClass, VirtualFile>> m = new ArrayList<Pair<PsiClass, VirtualFile>>(myPsiMethods.size());
         for (Pair<PsiClass, VirtualFile> psiMethod : myPsiMethods) {
             if (psiMethod.getFirst().isValid()) m.add(psiMethod);
         }

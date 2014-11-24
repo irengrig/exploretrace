@@ -20,10 +20,10 @@ public class TracesClassifier {
 
   public TracesClassifier(final List<Trace> inTraces) {
     myInTraces = inTraces;
-    myJdkThreads = new ArrayList<>();
-    myPools = new ArrayList<>();
-    mySimilar = new ArrayList<>();
-    myNotGrouped = new ArrayList<>();
+    myJdkThreads = new ArrayList<Trace>();
+    myPools = new ArrayList<PoolDescriptor>();
+    mySimilar = new ArrayList<PoolDescriptor>();
+    myNotGrouped = new ArrayList<Trace>();
   }
 
   public void execute() {
@@ -47,8 +47,8 @@ public class TracesClassifier {
   }
 
   private void filterOutPools() {
-    final List<Trace> list = new ArrayList<>();
-    final MultiMap<Pair<String, List<String>>, Trace> map = new MultiMap<>();
+    final List<Trace> list = new ArrayList<Trace>();
+    final MultiMap<Pair<String, List<String>>, Trace> map = new MultiMap<Pair<String, List<String>>, Trace>();
     for (Trace trace : myInTraces) {
       map.putValue(Pair.create(trace.getStateWords(), trace.getTrace()), trace);
     }
@@ -66,8 +66,8 @@ public class TracesClassifier {
   }
 
   private void filterOutSimilar() {
-    final List<Trace> list = new ArrayList<>();
-    final MultiMap<Pair<String, List<String>>, Trace> mapForSimilar = new MultiMap<>();
+    final List<Trace> list = new ArrayList<Trace>();
+    final MultiMap<Pair<String, List<String>>, Trace> mapForSimilar = new MultiMap<Pair<String, List<String>>, Trace>();
     for (Trace trace : myInTraces) {
       mapForSimilar.putValue(TracesSimilarChecker.cutRefs(trace), trace);
     }
@@ -86,8 +86,8 @@ public class TracesClassifier {
   }
 
   private PoolDescriptor groupThreads(final Collection<Trace> traces) {
-    final List<String> names = new ArrayList<>(traces.size());
-    final List<String> presentations = new ArrayList<>(traces.size());
+    final List<String> names = new ArrayList<String>(traces.size());
+    final List<String> presentations = new ArrayList<String>(traces.size());
     for (Trace trace : traces) {
       names.add(trace.getThreadName());
       presentations.add(trace.getFirstLine());
@@ -108,7 +108,7 @@ public class TracesClassifier {
   }
 
   private void filterOutJdk() {
-    final List<Trace> list = new ArrayList<>();
+    final List<Trace> list = new ArrayList<Trace>();
     for (Trace inTrace : myInTraces) {
       if (JvmSystemThreadChecker.isEdt(inTrace)) {
         myEdtTrace = inTrace;

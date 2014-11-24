@@ -94,11 +94,10 @@ public enum TraceCase {
         }
     }
 
-    @NonNls
     private static final String SOCKET_GENERIC_PATTERN = "at java.net.";
     private final static Set<String> SOCKET_PATTERNS;
     static {
-        final Set<String> set = new HashSet<>();
+        final Set<String> set = new HashSet<String>();
         addToSocketPattern(set, "PlainSocketImpl.socketAccept(PlainSocketImpl.java:");
         addToSocketPattern(set, "PlainDatagramSocketImpl.receive(PlainDatagramSocketImpl.java:");
         addToSocketPattern(set, "PlainDatagramSocketImpl.receive0(Native Method");
@@ -126,7 +125,7 @@ public enum TraceCase {
         return false;
     }
 
-    private final static Set<String> WAITING_FOR_PROCESS_PATTERNS = new HashSet<>();
+    private final static Set<String> WAITING_FOR_PROCESS_PATTERNS = new HashSet<String>();
     static {
         WAITING_FOR_PROCESS_PATTERNS.add("at java.lang.ProcessImpl.waitFor(");
         WAITING_FOR_PROCESS_PATTERNS.add("at java.lang.UNIXProcess.waitFor(UNIXProcess.java");
@@ -145,7 +144,7 @@ public enum TraceCase {
 
     private final static Set<String> IO_PATTERNS;
     static {
-        final Set<String> set = new HashSet<>();
+        final Set<String> set = new HashSet<String>();
         set.add("java.nio.channels.Selector.select(");
         set.add("java.io.FileInputStream.read(");
         set.add("java.io.FileInputStream.readBytes(");

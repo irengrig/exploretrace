@@ -21,7 +21,7 @@ public class PoolDescriptor {
     myTypicalTrace = typicalTrace;
     myNames = names;
     myPresentations = presentations;
-    myOtherTraces = new ArrayList<>();
+    myOtherTraces = new ArrayList<Trace>();
   }
 
   public void addTrace(@NotNull final Trace trace) {

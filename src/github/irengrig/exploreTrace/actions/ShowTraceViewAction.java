@@ -55,7 +55,9 @@ public class ShowTraceViewAction extends AnAction {
       final Transferable contents = CopyPasteManager.getInstance().getContents();
       if (contents == null) return;
       transferData = (String) contents.getTransferData(DataFlavor.stringFlavor);
-    } catch (UnsupportedFlavorException | IOException e) {
+    } catch (UnsupportedFlavorException e) {
+      return;
+    } catch (IOException e) {
       return;
     }
 

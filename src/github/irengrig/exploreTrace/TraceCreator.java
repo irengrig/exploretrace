@@ -15,8 +15,8 @@ public class TraceCreator {
   public TraceCreator(TraceReader read) {
     myRead = read;
     myLineWidthCorrection = 0;
-    myCorrectedTraces = new ArrayList<>();
-    myCreatedTraces = new ArrayList<>();
+    myCorrectedTraces = new ArrayList<List<String>>();
+    myCreatedTraces = new ArrayList<Trace>();
   }
 
   public void createTraces() {
@@ -111,7 +111,7 @@ public class TraceCreator {
 
   private void doCorrection() {
     for (String s : myRead.getTraces()) {
-      final List<String> traceLines = new ArrayList<>();
+      final List<String> traceLines = new ArrayList<String>();
       myCorrectedTraces.add(traceLines);
       final String[] lines = s.split("\n");
       int previousLineWidth = -1;
@@ -152,7 +152,7 @@ public class TraceCreator {
     private final static String ThreadState = "java.lang.Thread.State";
     private final static String AT = "at ";
     private final static String MINUS = "- ";
-    private final static Set<String> POSSIBLE_STARTS = new HashSet<>(Arrays.asList(QUOTES, ThreadState, AT, MINUS));
+    private final static Set<String> POSSIBLE_STARTS = new HashSet<String>(Arrays.asList(QUOTES, ThreadState, AT, MINUS));
 
     public static boolean isStart(final String line) {
       final String trim = line.trim();

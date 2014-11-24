@@ -38,7 +38,7 @@ public class TraceReader {
   public void read(@NotNull final InputStream is) throws IOException {
     final LineNumberReader reader = new LineNumberReader(new InputStreamReader(is));
 
-    final Set<String> possiblePrefix = new HashSet<>();
+    final Set<String> possiblePrefix = new HashSet<String>();
     for (;;) {
       String line = reader.readLine();
       if (line == null) break;  // eof possibly

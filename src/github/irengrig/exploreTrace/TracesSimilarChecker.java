@@ -1,11 +1,9 @@
 package github.irengrig.exploreTrace;
 
 import com.intellij.openapi.util.Pair;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Created by Irina.Chernushina on 8/17/2014.
@@ -31,7 +29,7 @@ public class TracesSimilarChecker {
   }*/
 
   public static Pair<String, List<String>> cutRefs(final Trace trace) {
-    final List<String> withReplaced = new ArrayList<>();
+    final List<String> withReplaced = new ArrayList<String>();
     for (String s : trace.getTrace()) {
       if (s.trim().startsWith("at ")) {
         withReplaced.add(s);

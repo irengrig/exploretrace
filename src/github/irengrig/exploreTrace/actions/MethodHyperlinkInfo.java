@@ -34,7 +34,7 @@ public class MethodHyperlinkInfo implements HyperlinkInfo {
 
     @Override
     public void navigate(final Project project) {
-        final List<Pair<VirtualFile, PsiMethod>> m = new ArrayList<>(myPsiMethods.size());
+        final List<Pair<VirtualFile, PsiMethod>> m = new ArrayList<Pair<VirtualFile, PsiMethod>>(myPsiMethods.size());
         for (Pair<VirtualFile, PsiMethod> psiMethod : myPsiMethods) {
             if (psiMethod.getSecond().isValid()) m.add(psiMethod);
         }

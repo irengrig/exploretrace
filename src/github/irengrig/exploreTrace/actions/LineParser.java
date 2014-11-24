@@ -41,7 +41,7 @@ public class LineParser {
 
     public LineParser(final String line) {
         myLine = line.trim();
-        myResult = new ArrayList<>();
+        myResult = new ArrayList<Pair<String, HyperlinkInfo>>();
     }
 
     public void parse(final Project project) {
@@ -99,7 +99,7 @@ public class LineParser {
                 return myClassName.equals(psiClass.getQualifiedName());
             }
         });*/
-        final List<Pair<PsiClass, VirtualFile>> convertedFiles = new ArrayList<>();
+        final List<Pair<PsiClass, VirtualFile>> convertedFiles = new ArrayList<Pair<PsiClass, VirtualFile>>();
         for (PsiClass psiClass : psiClasses) {
             VirtualFile virtualFile = psiClass.getContainingFile().getVirtualFile();
             if (virtualFile.getFileType().equals(JavaClassFileType.INSTANCE)) {
@@ -111,7 +111,7 @@ public class LineParser {
             convertedFiles.add(Pair.create(psiClass, virtualFile));
         }
 
-        final List<Pair<VirtualFile, PsiMethod>> psiMethods = new ArrayList<>();
+        final List<Pair<VirtualFile, PsiMethod>> psiMethods = new ArrayList<Pair<VirtualFile, PsiMethod>>();
         final Function<Pair<PsiClass, VirtualFile>, PsiMethod[]> function = getMethodsFromClass();
         final Iterator<Pair<PsiClass, VirtualFile>> iterator = convertedFiles.iterator();
         while (iterator.hasNext()) {
@@ -144,7 +144,7 @@ public class LineParser {
 
         int idxInner = myClassName.indexOf("$");
         if (idxInner > 0) {
-            final List<PsiClass> result = new ArrayList<>();
+            final List<PsiClass> result = new ArrayList<PsiClass>();
             final String outerName = myClassName.substring(0, idxInner);
             final String innerName = myClassName.substring(idxInner + 1);
             final PsiClass[] outerClasses = psiFacade.findClasses(outerName, scope);
@@ -170,7 +170,7 @@ public class LineParser {
                     return pair.getFirst().getConstructors();
                 } else {
                     final PsiMethod[] methods = pair.getFirst().getMethods();
-                    final List<PsiMethod> methodList = new ArrayList<>(2);
+                    final List<PsiMethod> methodList = new ArrayList<PsiMethod>(2);
                     for (PsiMethod psiMethod : methods) {
                         if (myMethod.equals(psiMethod.getName())) {
                             methodList.add(psiMethod);

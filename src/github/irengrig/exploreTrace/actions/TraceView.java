@@ -14,6 +14,7 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.ui.popup.*;
 import com.intellij.openapi.ui.popup.util.BaseListPopupStep;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.wm.ToolWindow;
@@ -27,12 +28,9 @@ import com.intellij.ui.popup.PopupFactoryImpl;
 import com.intellij.util.BooleanFunction;
 import com.intellij.util.Processor;
 import com.intellij.util.ui.FormBuilder;
-import com.intellij.util.ui.TextTransferable;
 import com.intellij.util.ui.UIUtil;
 import github.irengrig.exploreTrace.PoolDescriptor;
 import github.irengrig.exploreTrace.Trace;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.DataFormat;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -76,7 +74,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
                    final List<Trace> jdkThreads, final Trace edtTrace, DefaultActionGroup defaultActionGroup, final String contentId) {
     super(new BorderLayout());
     myProject = project;
-    myMarked = new HashSet<>();
+    myMarked = new HashSet<Object>();
     myNotGrouped = notGrouped;
     myPools = pools;
     mySimilar = similar;
@@ -84,7 +82,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     myEdtTrace = edtTrace;
     myDefaultActionGroup = defaultActionGroup;
 
-    myCurrentFilter = new HashSet<>();
+    myCurrentFilter = new HashSet<Pair<TraceType, TraceCase>>();
     myCurrentFilter.add(Pair.create(TraceType.jdk, TraceCase.unknown));
     myCurrentFilter.add(Pair.create(TraceType.pool, TraceCase.unknown));
 
@@ -131,6 +129,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     myNamesList = new JBList(new DefaultListModel());
     final TextConsoleBuilder builder = TextConsoleBuilderFactory.getInstance().createBuilder(myProject);
     myConsole = builder.getConsole();
+    Disposer.register(myProject, myConsole);
 
     myNamesList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
     fillNamesList();
@@ -215,7 +214,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     if (selectedIndices.length > 1) {
       final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
-      final List<String> names = new ArrayList<>(selectedIndices.length);
+      final List<String> names = new ArrayList<String>(selectedIndices.length);
       for (int selectedIndice : selectedIndices) {
         final TypedTrace typedTrace = (TypedTrace) model.get(selectedIndice);
         final Trace trace = getTrace(typedTrace);
@@ -276,7 +275,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
   private void precalculateDetails(final List<TypedTrace> list) {
     for (TypedTrace typedTrace : list) {
-      final List<LineInfo> result = new ArrayList<>();
+      final List<LineInfo> result = new ArrayList<LineInfo>();
       final Trace tr = getTrace(typedTrace);
       final List<String> trace = tr.getTrace();
       for (String s : trace) {
@@ -325,7 +324,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     private final List<Pair<String, HyperlinkInfo>> myFragments;
 
     public LineInfo() {
-      myFragments = new ArrayList<>();
+      myFragments = new ArrayList<Pair<String, HyperlinkInfo>>();
     }
 
     public void add(@NotNull final String text, @Nullable HyperlinkInfo hyperlinkInfo) {
@@ -350,21 +349,21 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     model.clear();
 
     int cnt = 0;
-    myTraces = new ArrayList<>();
+    myTraces = new ArrayList<TypedTrace>();
     for (Trace trace : myNotGrouped) {
-      myTraces.add(new TypedTrace<>(++cnt, TraceType.single, trace));
+      myTraces.add(new TypedTrace<Trace>(++cnt, TraceType.single, trace));
     }
     if (myEdtTrace != null) {
-      myTraces.add(new TypedTrace<>(++cnt, TraceType.edt, myEdtTrace));
+      myTraces.add(new TypedTrace<Trace>(++cnt, TraceType.edt, myEdtTrace));
     }
     for (PoolDescriptor pool : mySimilar) {
-      myTraces.add(new TypedTrace<>(++cnt, TraceType.similar, pool));
+      myTraces.add(new TypedTrace<PoolDescriptor>(++cnt, TraceType.similar, pool));
     }
     for (PoolDescriptor pool : myPools) {
-      myTraces.add(new TypedTrace<>(++cnt, TraceType.pool, pool));
+      myTraces.add(new TypedTrace<PoolDescriptor>(++cnt, TraceType.pool, pool));
     }
     for (Trace trace : myJdkThreads) {
-      myTraces.add(new TypedTrace<>(++cnt, TraceType.jdk, trace));
+      myTraces.add(new TypedTrace<Trace>(++cnt, TraceType.jdk, trace));
     }
     setCases(myTraces);
     precalculateDetails(myTraces);
@@ -530,21 +529,26 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
 
     @Override
     public int compare(final TypedTrace o1, final TypedTrace o2) {
-      int compareType = Integer.compare(o1.getTraceType().ordinal(), o2.getTraceType().ordinal());
+      int compareType = new Integer(o1.getTraceType().ordinal()).compareTo(o2.getTraceType().ordinal());
       if (compareType != 0 && ! TraceType.edt.equals(o1.getTraceType()) && ! TraceType.edt.equals(o2.getTraceType())) return compareType;
 
       final Trace trace1 = getTrace(o1);
       final Trace trace2 = getTrace(o2);
 
       if (TraceType.jdk.equals(o1.getTraceType()) && compareType == 0) {
-        int compareOrderInGroup = Integer.compare(trace1.getInitialOrderInGroup(), trace2.getInitialOrderInGroup());
+        int compareOrderInGroup = 0;
+        try {
+          compareOrderInGroup = new Integer(trace1.getInitialOrderInGroup()).compareTo(trace2.getInitialOrderInGroup());
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
         if (compareOrderInGroup != 0) return compareOrderInGroup;
       }
 
-      int compareCases = Integer.compare(trace1.getCase().ordinal(), trace2.getCase().ordinal());
+      int compareCases = new Integer(trace1.getCase().ordinal()).compareTo(trace2.getCase().ordinal());
       if (compareCases != 0) return compareCases;
 
-      int comparePri = Integer.compare(trace2.getPriority(), trace1.getPriority());
+      int comparePri = new Integer(trace2.getPriority()).compareTo(trace1.getPriority());
       if (comparePri != 0) return comparePri;
 
       return trace1.getThreadName().compareToIgnoreCase(trace2.getThreadName());
@@ -687,7 +691,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     }
 
     public Set<Pair<TraceType, TraceCase>> getHiddenTypes() {
-      final Set<Pair<TraceType, TraceCase>> set = new HashSet<>();
+      final Set<Pair<TraceType, TraceCase>> set = new HashSet<Pair<TraceType, TraceCase>>();
       if (! myJdk.isSelected()) set.add(Pair.create(TraceType.jdk, TraceCase.unknown));
       if (! myPools.isSelected()) set.add(Pair.create(TraceType.pool, TraceCase.unknown));
       if (! mySocket.isSelected()) set.add(Pair.create(TraceType.single, TraceCase.socket));
@@ -784,7 +788,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
       trace.setVisible(true);
     }
     final DefaultListModel model = (DefaultListModel) myNamesList.getModel();
-    final Set selectedValuesList = new HashSet(myNamesList.getSelectedValuesList());
+    final Set selectedValuesList = new HashSet(Arrays.asList(myNamesList.getSelectedValues()));
     final Object anchorItem = selectedValuesList.isEmpty() ? null : model.get(myNamesList.getAnchorSelectionIndex());
     final Object leadItem = selectedValuesList.isEmpty() ? null : model.get(myNamesList.getLeadSelectionIndex());
 
@@ -798,7 +802,7 @@ public class TraceView extends JPanel implements TypeSafeDataProvider {
     }
     model.clear();
     int cnt = 0;
-    final Set<Integer> selected = new HashSet<>();
+    final Set<Integer> selected = new HashSet<Integer>();
     int anchorIdx = -1;
     int leadIdx = -1;
     for (TypedTrace trace : myTraces) {
