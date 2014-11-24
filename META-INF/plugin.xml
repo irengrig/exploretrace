@@ -5,17 +5,20 @@
   <vendor email="Irina.Chernushina@jetbrains.com" url="https://www.github.com/irengrig/exploretrace">Irina Chernushina</vendor>
 
   <description><![CDATA[
-      Works with Java thread dumps:<br/>
+      Works with Java thread dumps.<br/>
+      Reads thread dump from clipboard buffer.<br/>
+      <br/>Menu: Analyze -> Explore Stack Trace<br/>
+      <br/>
+      Features:<br/>
       <ul>
-      <li>reads dump from clipboard buffer</li>
-      <li>removes email prefixes like ">" or concatenates lines cut by Windows console</li>
-      <li>prioritizes by different factors</li>
       <li>automatic grouping of similar threads - works well for dumps with thread pools</li>
       <li>patterns for socket, I/O, waiting for process detection</li>
+      <li>prioritizes by different factors</li>
       <li>allows view editing - reorder or delete "not interesting" threads</li>
       <li>filters by thread category (jdk/pools/socket/waiting etc)</li>
       <li>remove all not interesting and export back into text</li>
       <li>navigation into code also by method name: useful when code had changed</li>
+      <li>removes email prefixes like ">" or concatenates lines cut by Windows console</li>
       <li>on start jdk threads (except EDT) and thread pools already filtered</li>
       </ul>
     ]]></description>

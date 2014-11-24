@@ -42,7 +42,7 @@ public class ShowTraceViewAction extends AnAction {
   public static final String EXPLORE_STACK_TRACE = "Explore Stack Trace";
 
   public ShowTraceViewAction() {
-    super("Explore Stack Trace");
+    super("&Explore Stack Trace");
   }
 
   @Override
